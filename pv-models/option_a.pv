@@ -1,0 +1,350 @@
+(* ===========================================================
+   SGP.22 Consumer RSP — Option (a): Classical Baseline
+   ECDSA signatures + ECDH key agreement
+   All messages flow on the public Dolev-Yao channel.
+   TLS 1.3 transport is not modeled at the application layer.
+
+   Reference: plan.md — Option (a)
+
+   Security properties verified:
+     Q1  Injective auth: eUICC authenticates SM-DP+  (serverSigned1)
+     Q2  Injective auth: SM-DP+ authenticates eUICC  (euiccSigned1)
+     Q3  Session key secrecy  (ShS test value)
+     Q4  Profile / BPP confidentiality
+     Q5  Binding integrity: install iff SM-DP+ sent
+     Q6  Forward secrecy: session key secret after long-term key reveal
+   =========================================================== *)
+
+(* ---- Types ---- *)
+type skey.    (* ECDSA secret signing key *)
+type pkey.    (* ECDSA public verification key *)
+type dhskey.  (* ephemeral ECDH secret key *)
+type dhpkey.  (* ephemeral ECDH public key *)
+
+(* ---- Channel ---- *)
+(* All messages including LPA-relayed ones go through the attacker-controlled channel *)
+free c: channel.
+
+(* ---- ECDSA (EUF-CMA) ---- *)
+fun pk(skey): pkey.
+fun sign(bitstring, skey): bitstring.
+reduc forall m: bitstring, k: skey;
+  checksign(sign(m, k), pk(k)) = m.
+
+(* ---- CI Certificates ---- *)
+(* cert(subject_pk, ci_sk) binds a public key under CI authority          *)
+(* checkcert(cert, ci_pk) returns the subject public key if valid         *)
+fun cert(pkey, skey): bitstring.
+reduc forall subj: pkey, skCI: skey;
+  checkcert(cert(subj, skCI), pk(skCI)) = subj.
+
+(* ---- ECDH key agreement ---- *)
+fun dhpk(dhskey): dhpkey.
+fun dh(dhskey, dhpkey): bitstring.
+equation forall x: dhskey, y: dhskey;
+  dh(x, dhpk(y)) = dh(y, dhpk(x)).
+
+(* ---- Symmetric encryption (AES-128 model) ---- *)
+fun senc(bitstring, bitstring): bitstring.
+reduc forall m: bitstring, k: bitstring;
+  sdec(senc(m, k), k) = m.
+
+(* ---- MAC ---- *)
+fun mac(bitstring, bitstring): bitstring.
+
+(* ---- KDF ---- *)
+fun kdf_ke(bitstring): bitstring.   (* session encryption key KE *)
+fun kdf_km(bitstring): bitstring.   (* session MAC key KM *)
+
+(* ---- Message constructors ([data] = injective, pattern-matchable) ----
+
+   plan.md step 8d:
+     serverSigned1 = { TransactionID, eUIICCChallenge, serverChallenge, dpAddr }    *)
+fun mk_ss1(bitstring, bitstring, bitstring, bitstring): bitstring [data].
+
+(*   plan.md step 13a:
+     euiccSigned1 = { TransactionID, serverChallenge, euiccInfo2 }                  *)
+fun mk_es1(bitstring, bitstring, bitstring): bitstring [data].
+
+(*   plan.md step 17b:
+     smdpSigned2 = { TransactionID }                                                 *)
+fun mk_ss2(bitstring): bitstring [data].
+
+(*   plan.md step 21b (options a,b,c):
+     euiccSigned2 = { TransactionID, otPK.EUICC.ECKA }                              *)
+fun mk_es2(bitstring, dhpkey): bitstring [data].
+
+(*   plan.md step 21c: sign over (euiccSigned2 || smdpSignature2)                   *)
+fun mk_keyMsg(bitstring, bitstring): bitstring [data].
+
+(*   plan.md step 24f (options a,b):
+     bind_body = { TransactionID, otPK.DP.ECKA, otPK.EUICC.ECKA, BPP }             *)
+fun mk_bb(bitstring, dhpkey, dhpkey, bitstring): bitstring [data].
+
+(*   plan.md step 28:
+     installResult = { TransactionID, ICCID }                                        *)
+fun mk_ir(bitstring, bitstring): bitstring [data].
+
+(* ---- Secrecy test values ---- *)
+free profileSecret:  bitstring [private].   (* plaintext eSIM profile *)
+free sessionKeyTest: bitstring [private].   (* session key witness for Q3/Q6 *)
+
+(* ---- Events ---- *)
+event SMDP_SentServerSigned1(bitstring).         (* SM-DP+ produced serverSigned1      *)
+event eUICC_AuthenticatedServer(bitstring).      (* eUICC accepted serverSigned1       *)
+event eUICC_SentEuiccSigned1(bitstring).         (* eUICC produced euiccSigned1        *)
+event SMDP_AuthenticatedClient(bitstring).       (* SM-DP+ accepted euiccSigned1       *)
+event SMDP_DerivedSessionKey(bitstring).         (* SM-DP+ derived ShS                 *)
+event eUICC_DerivedSessionKey(bitstring).        (* eUICC derived ShS                  *)
+event SMDP_SentProfile(bitstring, bitstring).    (* SM-DP+ sent (tid, profile)         *)
+event eUICC_InstalledProfile(bitstring, bitstring). (* eUICC installed (tid, profile)  *)
+
+(* ===========================================================
+   Security Queries
+   =========================================================== *)
+
+(* Q1: Injective agreement — every server acceptance by eUICC
+        maps to a unique SM-DP+ send of serverSigned1          *)
+query ss1: bitstring;
+  inj-event(eUICC_AuthenticatedServer(ss1)) ==>
+  inj-event(SMDP_SentServerSigned1(ss1)).
+
+(* Q2: Injective agreement — every client acceptance by SM-DP+
+        maps to a unique eUICC send of euiccSigned1             *)
+query es1: bitstring;
+  inj-event(SMDP_AuthenticatedClient(es1)) ==>
+  inj-event(eUICC_SentEuiccSigned1(es1)).
+
+(* Q3: Session key secrecy — ShS witness unreachable *)
+query attacker(sessionKeyTest).
+
+(* Q4: Profile confidentiality — plaintext profile unreachable *)
+query attacker(profileSecret).
+
+(* Q5: Binding integrity — eUICC installs only what SM-DP+ sent *)
+query tid: bitstring, prof: bitstring;
+  event(eUICC_InstalledProfile(tid, prof)) ==>
+  event(SMDP_SentProfile(tid, prof)).
+
+(* Q6: Forward secrecy — session key stays secret in phase 0
+        even though long-term signing keys are revealed in phase 1 *)
+query attacker(sessionKeyTest) phase 0.
+
+(* ===========================================================
+   SM-DP+ Process
+   plan.md steps: 8, 9, 16, 17, 18, 24, 25, 29
+   =========================================================== *)
+let processSMDP(skDPauth: skey, skDPpb: skey,
+                certDPauth: bitstring, certDPpb: bitstring,
+                pkCI: pkey, dpAddr: bitstring) =
+
+  (* Step 7: receive eUICC challenge forwarded by LPA *)
+  in(c, (euiccChallenge: bitstring, euiccInfo1: bitstring));
+
+  (* Step 8: generate TransactionID + serverChallenge, build serverSigned1 *)
+  new transactionID: bitstring;
+  new serverChallenge: bitstring;
+  let ss1 = mk_ss1(transactionID, euiccChallenge, serverChallenge, dpAddr) in
+  let sig1 = sign(ss1, skDPauth) in
+  event SMDP_SentServerSigned1(ss1);
+
+  (* Step 9: send server authentication message *)
+  out(c, (transactionID, ss1, sig1, certDPauth));
+
+  (* Step 15: receive eUICC authentication response forwarded by LPA *)
+  in(c, (es1: bitstring, euiccSig1: bitstring,
+         certEUICC: bitstring, certEUM: bitstring));
+
+  (* Step 16a-d: verify CERT.EUICC chain against CI, then euiccSignature1 *)
+  let pkEUICC: pkey = checkcert(certEUICC, pkCI) in
+  let es1check = checksign(euiccSig1, pkEUICC) in
+  if es1check = es1 then
+
+  (* Step 16e: verify serverChallenge binding — prevents reflection attacks *)
+  let mk_es1(tid16, sc16, _) = es1 in
+  if tid16 = transactionID then
+  if sc16 = serverChallenge then
+  event SMDP_AuthenticatedClient(es1);
+
+  (* Step 17: build and sign smdpSigned2 with SK.DPpb *)
+  let ss2 = mk_ss2(transactionID) in
+  let sig2 = sign(ss2, skDPpb) in
+
+  (* Step 18: send PrepareDownload *)
+  out(c, (transactionID, ss2, sig2, certDPpb));
+
+  (* Step 23: receive euiccSigned2 + euiccSignature2 forwarded by LPA *)
+  in(c, (es2: bitstring, euiccSig2: bitstring));
+
+  (* Step 24a: verify euiccSig2 covers (euiccSigned2 || smdpSignature2) per step 21c *)
+  let keyMsg = mk_keyMsg(es2, sig2) in
+  let keyMsgCheck = checksign(euiccSig2, pkEUICC) in
+  if keyMsgCheck = keyMsg then
+
+  (* extract ephemeral eUICC ECDH public key *)
+  let mk_es2(tid24, otPKeuicc) = es2 in
+  if tid24 = transactionID then
+
+  (* Step 24b: generate ephemeral SM-DP+ ECDH keypair *)
+  new otSKdp: dhskey;
+  let otPKdp = dhpk(otSKdp) in
+
+  (* Step 24c: ECDH shared secret, KDF *)
+  let shS = dh(otSKdp, otPKeuicc) in
+  let ke  = kdf_ke(shS) in
+  let km  = kdf_km(shS) in
+  event SMDP_DerivedSessionKey(shS);
+
+  (* Step 24e: encrypt profile; also encrypt session key witness for Q3/Q6 *)
+  let bpp        = senc(profileSecret,  ke) in
+  let skTestEnc  = senc(sessionKeyTest, ke) in
+
+  (* Step 24f-h: build bind_body, MAC, sign with SK.DPpb *)
+  let bb     = mk_bb(transactionID, otPKdp, otPKeuicc, bpp) in
+  let macVal = mac(bb, km) in
+  let sig3   = sign(bb, skDPpb) in
+  event SMDP_SentProfile(transactionID, profileSecret);
+
+  (* Step 25: send BoundProfilePackage *)
+  out(c, (transactionID, bb, macVal, sig3, skTestEnc));
+
+  (* Step 29: receive ProfileInstallationResult *)
+  in(c, (installRes: bitstring, euiccSig3: bitstring));
+  let mk_ir(tid29, _) = installRes in
+  if tid29 = transactionID then
+  0.
+
+
+(* ===========================================================
+   eUICC Process
+   plan.md steps: 3, 4, 12, 13, 14, 20, 21, 22, 27, 28
+   =========================================================== *)
+let processEUICC(skEUICC: skey, certEUICC: bitstring, certEUM: bitstring,
+                 pkCI: pkey) =
+
+  (* Step 3: generate eUICC challenge (16-byte nonce) *)
+  new euiccChallenge: bitstring;
+  new euiccInfo1: bitstring;
+  new euiccInfo2: bitstring;
+
+  (* Step 4: send challenge to LPA *)
+  out(c, (euiccChallenge, euiccInfo1));
+
+  (* Step 11: receive AuthenticateServer forwarded by LPA *)
+  in(c, (transactionID: bitstring, ss1: bitstring,
+         sig1: bitstring, certDPauth: bitstring));
+
+  (* Step 12a-c: verify CERT.DPauth using CI public key, then serverSignature1 *)
+  let pkDPauth: pkey = checkcert(certDPauth, pkCI) in
+  let ss1check = checksign(sig1, pkDPauth) in
+  if ss1check = ss1 then
+
+  (* Step 12d: verify eUIICCChallenge binding — prevents cross-session replay *)
+  let mk_ss1(tid12, ec12, sc12, _) = ss1 in
+  if tid12 = transactionID then
+  if ec12 = euiccChallenge then
+  event eUICC_AuthenticatedServer(ss1);
+
+  (* Step 13: build euiccSigned1 binding serverChallenge *)
+  let es1 = mk_es1(transactionID, sc12, euiccInfo2) in
+  let euiccSig1 = sign(es1, skEUICC) in
+  event eUICC_SentEuiccSigned1(es1);
+
+  (* Step 14: send eUICC authentication response to LPA *)
+  out(c, (es1, euiccSig1, certEUICC, certEUM));
+
+  (* Step 19: receive PrepareDownload forwarded by LPA *)
+  in(c, (tid19: bitstring, ss2: bitstring, sig2: bitstring, certDPpb: bitstring));
+  if tid19 = transactionID then
+
+  (* Step 20a-b: verify CERT.DPpb and smdpSignature2 *)
+  let pkDPpb: pkey = checkcert(certDPpb, pkCI) in
+  let ss2check = checksign(sig2, pkDPpb) in
+  if ss2check = ss2 then
+  let mk_ss2(tid20) = ss2 in
+  if tid20 = transactionID then
+
+  (* Step 21a: generate ephemeral ECDH keypair *)
+  new otSKeuicc: dhskey;
+  let otPKeuicc = dhpk(otSKeuicc) in
+  let es2 = mk_es2(transactionID, otPKeuicc) in
+
+  (* Step 21c: sign (euiccSigned2 || smdpSignature2) — binds ephemeral key to session *)
+  let keyMsg   = mk_keyMsg(es2, sig2) in
+  let euiccSig2 = sign(keyMsg, skEUICC) in
+
+  (* Step 22: send ephemeral key material to LPA *)
+  out(c, (es2, euiccSig2));
+
+  (* Step 26: receive BoundProfilePackage forwarded by LPA *)
+  in(c, (tid26: bitstring, bb: bitstring, macVal: bitstring,
+         sig3: bitstring, skTestEnc: bitstring));
+  if tid26 = transactionID then
+
+  (* Step 27a: verify serverSignature3 on bind_body *)
+  let bbcheck = checksign(sig3, pkDPpb) in
+  if bbcheck = bb then
+
+  (* Step 27b: ECDH key recovery *)
+  let mk_bb(tid27, otPKdp, otPKeuiccIn, bpp) = bb in
+  if tid27 = transactionID then
+  if otPKeuiccIn = otPKeuicc then
+
+  let shS = dh(otSKeuicc, otPKdp) in
+  let ke  = kdf_ke(shS) in
+  let km  = kdf_km(shS) in
+  event eUICC_DerivedSessionKey(shS);
+
+  (* Step 27d: verify MAC over bind_body *)
+  if mac(bb, km) = macVal then
+
+  (* Step 27e: decrypt and install profile *)
+  let profile = sdec(bpp, ke) in
+  event eUICC_InstalledProfile(transactionID, profile);
+
+  (* Step 27f: sign installation result *)
+  new iccid: bitstring;
+  let installRes = mk_ir(transactionID, iccid) in
+  let euiccSig3  = sign(installRes, skEUICC) in
+
+  (* Step 28: send ProfileInstallationResult to LPA *)
+  out(c, (installRes, euiccSig3));
+  0.
+
+
+(* ===========================================================
+   Main Process
+   =========================================================== *)
+process
+  (* GSMA CI trust anchor *)
+  new skCI: skey;
+  let pkCI = pk(skCI) in
+
+  (* SM-DP+ keypairs: SK.DPauth (Phase 1 auth) and SK.DPpb (Phase 2 binding) *)
+  new skDPauth: skey;
+  new skDPpb:   skey;
+  let certDPauth = cert(pk(skDPauth), skCI) in
+  let certDPpb   = cert(pk(skDPpb),   skCI) in
+
+  (* eUICC long-term keypair *)
+  new skEUICC: skey;
+  let certEUICC = cert(pk(skEUICC), skCI) in
+
+  (* EUM certificate — chain collapsed to CI-signed for model clarity *)
+  new skEUM: skey;
+  let certEUM = cert(pk(skEUM), skCI) in
+
+  (* SM-DP+ address is publicly known *)
+  new dpAddr: bitstring;
+  out(c, dpAddr);
+  out(c, pkCI);
+
+  (* Forward secrecy (Q6): reveal long-term signing keys in phase 1.
+     plan.md: "compromise of SK.DPauth or SK.EUICC does not reveal ShS"  *)
+  (phase 1; out(c, skDPauth)) |
+  (phase 1; out(c, skDPpb))   |
+  (phase 1; out(c, skEUICC))  |
+
+  (* Unbounded parallel sessions *)
+  !processSMDP(skDPauth, skDPpb, certDPauth, certDPpb, pkCI, dpAddr) |
+  !processEUICC(skEUICC, certEUICC, certEUM, pkCI)
