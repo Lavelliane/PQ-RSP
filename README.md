@@ -14,6 +14,19 @@ ProVerif models of the **GSMA SGP.22** consumer Remote SIM Provisioning (RSP) pr
 
 Each `.pv` file is self-contained (no includes).
 
+## Diagrams
+
+Sequence diagrams for consumer RSP (SGP.22-style flows):
+
+| File | Phase |
+|------|--------|
+| [CONSUMER-RSP-auth.png](diagrams/CONSUMER-RSP-auth.png) | Phase 1 — mutual authentication (challenge, `AuthenticateServer` / `AuthenticateClient`) |
+| [CONSUMER-RSP-download.png](diagrams/CONSUMER-RSP-download.png) | Phase 2 — profile download (`PrepareDownload`, `GetBoundProfilePackage`, `LoadBoundProfilePackage`) |
+
+![Phase 1 — mutual authentication](diagrams/CONSUMER-RSP-auth.png)
+
+![Phase 2 — profile download](diagrams/CONSUMER-RSP-download.png)
+
 ## Verification
 
 Requires [ProVerif](https://proverif.inria.fr/) (tested with 2.05).
