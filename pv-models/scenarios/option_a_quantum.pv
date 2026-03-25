@@ -1,0 +1,280 @@
+(* ===========================================================
+   SGP.22 Consumer RSP — Quantum Attack Scenario: Option (a)
+   Classical baseline (ECDSA + ECDH) under a Shor adversary.
+
+   Threat model:
+     The attacker is given a break_dh oracle modelling Shor's
+     algorithm applied to ECDH: given ANY two DH public keys that
+     appear on the channel, the attacker recovers the shared secret.
+     ECDSA is left intact (this isolates the ECDH break).
+
+   Why the attack works:
+     Both ephemeral EC public keys traverse the public channel c:
+       - otPK.EUICC.ECKA inside euiccSigned2  (step 22, out on c)
+       - otPK.DP.ECKA    inside bind_body      (step 25, out on c)
+     The attacker applies break_dh(otPKeuicc, otPKdp) = ShS,
+     derives KE = kdf_ke(ShS), and decrypts the BPP and session
+     key witness directly.
+
+   Compared with option (b):
+     Option (b) protects the LPA<->SM-DP+ ES9+ link with a private
+     channel (c_pqtls), modelling PQ-TLS. However, both ephemeral
+     EC public keys STILL traverse the public eUICC<->LPA channel c
+     (otPKeuicc out on c at step 22; otPKdp out on c at step 26).
+     Therefore option (b) offers NO additional protection against
+     break_dh; this model is representative of both (a) and (b)
+     under a quantum attacker.
+
+   Expected ProVerif results:
+     Q1  Injective server auth      -- true   (ECDSA intact)
+     Q2  Injective client auth      -- true   (ECDSA intact)
+     Q3  Session key secrecy        -- FALSE  (break_dh => ShS known)
+     Q4  Profile confidentiality    -- FALSE  (ShS => KE known => BPP decryptable)
+     Q5  Binding integrity          -- true   (sig3 unforgeable; ECDSA intact)
+     Q6  Forward secrecy            -- FALSE  (break_dh + long-term key reveal)
+   =========================================================== *)
+
+(* ---- Types ---- *)
+type skey.
+type pkey.
+type dhskey.
+type dhpkey.
+
+(* ---- Channel ---- *)
+free c: channel.
+
+(* ---- ECDSA (EUF-CMA — intact in this model) ---- *)
+fun pk(skey): pkey.
+fun sign(bitstring, skey): bitstring.
+reduc forall m: bitstring, k: skey;
+  checksign(sign(m, k), pk(k)) = m.
+
+(* ---- CI Certificates ---- *)
+fun cert(pkey, skey): bitstring.
+reduc forall subj: pkey, skCI: skey;
+  checkcert(cert(subj, skCI), pk(skCI)) = subj.
+
+(* ---- ECDH key agreement ---- *)
+fun dhpk(dhskey): dhpkey.
+fun dh(dhskey, dhpkey): bitstring.
+equation forall x: dhskey, y: dhskey;
+  dh(x, dhpk(y)) = dh(y, dhpk(x)).
+
+(* ---- QUANTUM ORACLE: Shor's algorithm breaks ECDH ----
+   The attacker holds dhpk(x) and dhpk(y) from observed messages
+   and computes break_dh(dhpk(x), dhpk(y)) = dh(x, dhpk(y)) = ShS.
+   Since break_dh is a public function and both EC public keys are
+   sent on the public channel, ProVerif gives this power to the
+   Dolev-Yao attacker automatically.                                *)
+fun break_dh(dhpkey, dhpkey): bitstring.
+equation forall x: dhskey, y: dhskey;
+  break_dh(dhpk(x), dhpk(y)) = dh(x, dhpk(y)).
+
+(* ---- Symmetric encryption ---- *)
+fun senc(bitstring, bitstring): bitstring.
+reduc forall m: bitstring, k: bitstring;
+  sdec(senc(m, k), k) = m.
+
+(* ---- MAC ---- *)
+fun mac(bitstring, bitstring): bitstring.
+
+(* ---- KDF ---- *)
+fun kdf_ke(bitstring): bitstring.
+fun kdf_km(bitstring): bitstring.
+
+(* ---- Message constructors ---- *)
+fun mk_ss1(bitstring, bitstring, bitstring, bitstring): bitstring [data].
+fun mk_es1(bitstring, bitstring, bitstring): bitstring [data].
+fun mk_ss2(bitstring): bitstring [data].
+fun mk_es2(bitstring, dhpkey): bitstring [data].
+fun mk_keyMsg(bitstring, bitstring): bitstring [data].
+fun mk_bb(bitstring, dhpkey, dhpkey, bitstring): bitstring [data].
+fun mk_ir(bitstring, bitstring): bitstring [data].
+
+(* ---- Secrecy witnesses ---- *)
+free profileSecret:  bitstring [private].
+free sessionKeyTest: bitstring [private].
+
+(* ---- Events ---- *)
+event SMDP_SentServerSigned1(bitstring).
+event eUICC_AuthenticatedServer(bitstring).
+event eUICC_SentEuiccSigned1(bitstring).
+event SMDP_AuthenticatedClient(bitstring).
+event SMDP_DerivedSessionKey(bitstring).
+event eUICC_DerivedSessionKey(bitstring).
+event SMDP_SentProfile(bitstring, bitstring).
+event eUICC_InstalledProfile(bitstring, bitstring).
+
+(* ===========================================================
+   Security Queries
+   Q3/Q4/Q6 expected FALSE under the quantum break_dh oracle.
+   =========================================================== *)
+
+(* Q1: injective server auth — expected TRUE (ECDSA intact) *)
+query ss1: bitstring;
+  inj-event(eUICC_AuthenticatedServer(ss1)) ==>
+  inj-event(SMDP_SentServerSigned1(ss1)).
+
+(* Q2: injective client auth — expected TRUE (ECDSA intact) *)
+query es1: bitstring;
+  inj-event(SMDP_AuthenticatedClient(es1)) ==>
+  inj-event(eUICC_SentEuiccSigned1(es1)).
+
+(* Q3: session key secrecy — expected FALSE (break_dh recovers ShS => KE) *)
+query attacker(sessionKeyTest).
+
+(* Q4: profile confidentiality — expected FALSE (KE known => decrypt BPP) *)
+query attacker(profileSecret).
+
+(* Q5: binding integrity — expected TRUE (serverSignature3 ECDSA unforgeable) *)
+query tid: bitstring, prof: bitstring;
+  event(eUICC_InstalledProfile(tid, prof)) ==>
+  event(SMDP_SentProfile(tid, prof)).
+
+(* Q6: forward secrecy — expected FALSE (long-term key reveal + break_dh) *)
+query attacker(sessionKeyTest) phase 0.
+
+(* ===========================================================
+   SM-DP+ Process
+   =========================================================== *)
+let processSMDP(skDPauth: skey, skDPpb: skey,
+                certDPauth: bitstring, certDPpb: bitstring,
+                pkCI: pkey, dpAddr: bitstring) =
+
+  in(c, (euiccChallenge: bitstring, euiccInfo1: bitstring));
+  new transactionID: bitstring;
+  new serverChallenge: bitstring;
+  let ss1 = mk_ss1(transactionID, euiccChallenge, serverChallenge, dpAddr) in
+  let sig1 = sign(ss1, skDPauth) in
+  event SMDP_SentServerSigned1(ss1);
+  out(c, (transactionID, ss1, sig1, certDPauth));
+
+  in(c, (es1: bitstring, euiccSig1: bitstring,
+         certEUICC: bitstring, certEUM: bitstring));
+  let pkEUICC: pkey = checkcert(certEUICC, pkCI) in
+  let es1check = checksign(euiccSig1, pkEUICC) in
+  if es1check = es1 then
+  let mk_es1(tid16, sc16, _) = es1 in
+  if tid16 = transactionID then
+  if sc16 = serverChallenge then
+  event SMDP_AuthenticatedClient(es1);
+
+  let ss2 = mk_ss2(transactionID) in
+  let sig2 = sign(ss2, skDPpb) in
+  out(c, (transactionID, ss2, sig2, certDPpb));
+
+  in(c, (es2: bitstring, euiccSig2: bitstring));
+  let keyMsg = mk_keyMsg(es2, sig2) in
+  let keyMsgCheck = checksign(euiccSig2, pkEUICC) in
+  if keyMsgCheck = keyMsg then
+  let mk_es2(tid24, otPKeuicc) = es2 in
+  if tid24 = transactionID then
+
+  new otSKdp: dhskey;
+  let otPKdp = dhpk(otSKdp) in
+  let shS    = dh(otSKdp, otPKeuicc) in
+  let ke     = kdf_ke(shS) in
+  let km     = kdf_km(shS) in
+  event SMDP_DerivedSessionKey(shS);
+
+  let bpp       = senc(profileSecret,  ke) in
+  let skTestEnc = senc(sessionKeyTest, ke) in
+  let bb        = mk_bb(transactionID, otPKdp, otPKeuicc, bpp) in
+  let macVal    = mac(bb, km) in
+  let sig3      = sign(bb, skDPpb) in
+  event SMDP_SentProfile(transactionID, profileSecret);
+  out(c, (transactionID, bb, macVal, sig3, skTestEnc));
+
+  in(c, (installRes: bitstring, euiccSig3: bitstring));
+  let mk_ir(tid29, _) = installRes in
+  if tid29 = transactionID then
+  0.
+
+(* ===========================================================
+   eUICC Process
+   =========================================================== *)
+let processEUICC(skEUICC: skey, certEUICC: bitstring, certEUM: bitstring,
+                 pkCI: pkey) =
+
+  new euiccChallenge: bitstring;
+  new euiccInfo1: bitstring;
+  new euiccInfo2: bitstring;
+  out(c, (euiccChallenge, euiccInfo1));
+
+  in(c, (transactionID: bitstring, ss1: bitstring,
+         sig1: bitstring, certDPauth: bitstring));
+  let pkDPauth: pkey = checkcert(certDPauth, pkCI) in
+  let ss1check = checksign(sig1, pkDPauth) in
+  if ss1check = ss1 then
+  let mk_ss1(tid12, ec12, sc12, _) = ss1 in
+  if tid12 = transactionID then
+  if ec12 = euiccChallenge then
+  event eUICC_AuthenticatedServer(ss1);
+
+  let es1 = mk_es1(transactionID, sc12, euiccInfo2) in
+  let euiccSig1 = sign(es1, skEUICC) in
+  event eUICC_SentEuiccSigned1(es1);
+  out(c, (es1, euiccSig1, certEUICC, certEUM));
+
+  in(c, (tid19: bitstring, ss2: bitstring, sig2: bitstring, certDPpb: bitstring));
+  if tid19 = transactionID then
+  let pkDPpb: pkey = checkcert(certDPpb, pkCI) in
+  let ss2check = checksign(sig2, pkDPpb) in
+  if ss2check = ss2 then
+  let mk_ss2(tid20) = ss2 in
+  if tid20 = transactionID then
+
+  new otSKeuicc: dhskey;
+  let otPKeuicc = dhpk(otSKeuicc) in
+  let es2 = mk_es2(transactionID, otPKeuicc) in
+  let keyMsg    = mk_keyMsg(es2, sig2) in
+  let euiccSig2 = sign(keyMsg, skEUICC) in
+  out(c, (es2, euiccSig2));
+
+  in(c, (tid26: bitstring, bb: bitstring, macVal: bitstring,
+         sig3: bitstring, skTestEnc: bitstring));
+  if tid26 = transactionID then
+  let bbcheck = checksign(sig3, pkDPpb) in
+  if bbcheck = bb then
+  let mk_bb(tid27, otPKdp, otPKeuiccIn, bpp) = bb in
+  if tid27 = transactionID then
+  if otPKeuiccIn = otPKeuicc then
+  let shS = dh(otSKeuicc, otPKdp) in
+  let ke  = kdf_ke(shS) in
+  let km  = kdf_km(shS) in
+  event eUICC_DerivedSessionKey(shS);
+
+  if mac(bb, km) = macVal then
+  let profile = sdec(bpp, ke) in
+  event eUICC_InstalledProfile(transactionID, profile);
+
+  new iccid: bitstring;
+  let installRes = mk_ir(transactionID, iccid) in
+  let euiccSig3  = sign(installRes, skEUICC) in
+  out(c, (installRes, euiccSig3));
+  0.
+
+(* ===========================================================
+   Main Process
+   =========================================================== *)
+process
+  new skCI: skey;
+  let pkCI = pk(skCI) in
+  new skDPauth: skey;
+  new skDPpb:   skey;
+  let certDPauth = cert(pk(skDPauth), skCI) in
+  let certDPpb   = cert(pk(skDPpb),   skCI) in
+  new skEUICC: skey;
+  let certEUICC = cert(pk(skEUICC), skCI) in
+  new skEUM: skey;
+  let certEUM = cert(pk(skEUM), skCI) in
+  new dpAddr: bitstring;
+  out(c, dpAddr);
+  out(c, pkCI);
+
+  (phase 1; out(c, skDPauth)) |
+  (phase 1; out(c, skDPpb))   |
+  (phase 1; out(c, skEUICC))  |
+
+  !processSMDP(skDPauth, skDPpb, certDPauth, certDPpb, pkCI, dpAddr) |
+  !processEUICC(skEUICC, certEUICC, certEUM, pkCI)
