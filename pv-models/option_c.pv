@@ -1,15 +1,15 @@
 (* ===========================================================
-   SGP.22 Consumer RSP — Option (c): PQ Authentication + Classical KA
+   SGP.22 Consumer RSP: Option (c): PQ Authentication + Classical KA
    ML-DSA-44 signatures + ECDH key agreement
    ES9+ uses PQ-TLS (modeled as public channel; transport is separate).
 
-   Reference: plan.md — Option (c)
+   Reference: protocol-details.md, option (c).
 
    Differences from option (a):
      - All signing keys use ML-DSA-44 types (mldsaskey / mldsapkey)
      - mldsa_pk / mldsa_sign / mldsa_checksign replace ECDSA primitives
      - CERT.DPauth, CERT.DPpb, CERT.EUICC are ML-DSA-44 certificates
-     - Key agreement (Phase 2) remains ECDH — same ephemeral DH types
+     - Key agreement (Phase 2) remains ECDH: same ephemeral DH types
      - bind_body structure identical to (a,b): two EC public keys
 
    Security note (plan.md):

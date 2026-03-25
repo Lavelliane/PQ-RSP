@@ -1,9 +1,9 @@
 (* ===========================================================
-   SGP.22 Consumer RSP — Option (d): Full PQC
+   SGP.22 Consumer RSP: Option (d): Full PQC
    ML-DSA-44 signatures + ML-KEM-768 key agreement
    ES9+ uses PQ-TLS (modeled as public channel).
 
-   Reference: plan.md — Option (d)
+   Reference: protocol-details.md, option (d).
 
    Differences from option (c):
      - ECDH entirely removed (no dhskey / dhpkey / dh equation)
@@ -13,7 +13,7 @@
      - Step 27 (eUICC): ML-KEM.Decaps(otSK.EUICC.MLKEM, ct) → ShS
      - bind_body is STRUCTURALLY DIFFERENT (plan.md note):
          option (a,b,c): mk_bb (TID, otPK.DP.ECKA, otPK.EUICC.ECKA, BPP)
-         option (d):     mk_bb_kem (TID, ct, BPP)  — no EC keys, only KEM ct
+         option (d):     mk_bb_kem (TID, ct, BPP) : no EC keys, only KEM ct
      - eUICC KA is non-contributory: only eUICC supplies randomness (KeyGen);
        SM-DP+ encapsulates to it (Encaps), does not generate its own ephemeral DH key
 
@@ -72,7 +72,7 @@ fun kdf_km(bitstring): bitstring.
 
 (* ---- Message constructors ([data] = injective, pattern-matchable) ---- *)
 
-(* Phase 1 — unchanged from option (c) *)
+(* Phase 1: unchanged from option (c) *)
 fun mk_ss1(bitstring, bitstring, bitstring, bitstring): bitstring [data].
 fun mk_es1(bitstring, bitstring, bitstring): bitstring [data].
 
@@ -80,10 +80,10 @@ fun mk_es1(bitstring, bitstring, bitstring): bitstring [data].
 fun mk_ss2(bitstring): bitstring [data].
 
 (* plan.md step 21b (option d): euiccSigned2 = { TID, otPK.EUICC.MLKEM }
-   Uses kempkey instead of dhpkey — distinct type from options a,b,c       *)
+   Uses kempkey instead of dhpkey: distinct type from options a,b,c       *)
 fun mk_es2_kem(bitstring, kempkey): bitstring [data].
 
-(* sign over (euiccSigned2 || smdpSignature2) — same structure as other options *)
+(* sign over (euiccSigned2 || smdpSignature2): same structure as other options *)
 fun mk_keyMsg(bitstring, bitstring): bitstring [data].
 
 (* plan.md step 24e (option d): bind_body = { TID, ct, BPP }

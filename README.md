@@ -18,10 +18,10 @@ Post-quantum primitives (where used) follow NIST selections: **ML-DSA-44** for s
 | File | Role |
 |------|------|
 | [protocol-details.md](protocol-details.md) | Protocol step reference and ProVerif modeling notes (notation, options, security goals) |
-| [pv-models/option_a.pv](pv-models/option_a.pv) | Option **(a)** — ECDSA + ECDH, public channel |
-| [pv-models/option_b.pv](pv-models/option_b.pv) | Option **(b)** — same as (a); PQ-TLS-style ES9+ (`c_pqtls` + relay) |
-| [pv-models/option_c.pv](pv-models/option_c.pv) | Option **(c)** — **ML-DSA-44** + ECDH |
-| [pv-models/option_d.pv](pv-models/option_d.pv) | Option **(d)** — **ML-DSA-44** + **ML-KEM-768** |
+| [pv-models/option_a.pv](pv-models/option_a.pv) | Option **(a)**: ECDSA + ECDH, public channel |
+| [pv-models/option_b.pv](pv-models/option_b.pv) | Option **(b)**: same as (a); PQ-TLS-style ES9+ (`c_pqtls` + relay) |
+| [pv-models/option_c.pv](pv-models/option_c.pv) | Option **(c)**: **ML-DSA-44** + ECDH |
+| [pv-models/option_d.pv](pv-models/option_d.pv) | Option **(d)**: **ML-DSA-44** + **ML-KEM-768** |
 
 Each `.pv` file is self-contained (no includes).
 
@@ -31,12 +31,12 @@ Sequence diagrams for consumer RSP (SGP.22-style flows):
 
 | File | Phase |
 |------|--------|
-| [CONSUMER-RSP-auth.png](diagrams/CONSUMER-RSP-auth.png) | Phase 1 — mutual authentication (challenge, `AuthenticateServer` / `AuthenticateClient`) |
-| [CONSUMER-RSP-download.png](diagrams/CONSUMER-RSP-download.png) | Phase 2 — profile download (`PrepareDownload`, `GetBoundProfilePackage`, `LoadBoundProfilePackage`) |
+| [CONSUMER-RSP-auth.png](diagrams/CONSUMER-RSP-auth.png) | Phase 1: mutual authentication (challenge, `AuthenticateServer` / `AuthenticateClient`) |
+| [CONSUMER-RSP-download.png](diagrams/CONSUMER-RSP-download.png) | Phase 2: profile download (`PrepareDownload`, `GetBoundProfilePackage`, `LoadBoundProfilePackage`) |
 
-![Phase 1 — mutual authentication](diagrams/CONSUMER-RSP-auth.png)
+![Phase 1: mutual authentication](diagrams/CONSUMER-RSP-auth.png)
 
-![Phase 2 — profile download](diagrams/CONSUMER-RSP-download.png)
+![Phase 2: profile download](diagrams/CONSUMER-RSP-download.png)
 
 ## Verification
 

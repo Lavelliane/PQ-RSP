@@ -1,5 +1,5 @@
 (* ===========================================================
-   SGP.22 Consumer RSP — Quantum Attack Scenario: Option (c)
+   SGP.22 Consumer RSP: Quantum Attack Scenario: Option (c)
    ML-DSA-44 signatures + ECDH, under a Shor ECDH adversary.
 
    Threat model:
@@ -107,28 +107,28 @@ event eUICC_InstalledProfile(bitstring, bitstring).
    Q3/Q4/Q6 expected FALSE (ECDH broken by Shor oracle).
    =========================================================== *)
 
-(* Q1: injective server auth — expected TRUE *)
+(* Q1: injective server auth: expected TRUE *)
 query ss1: bitstring;
   inj-event(eUICC_AuthenticatedServer(ss1)) ==>
   inj-event(SMDP_SentServerSigned1(ss1)).
 
-(* Q2: injective client auth — expected TRUE *)
+(* Q2: injective client auth: expected TRUE *)
 query es1: bitstring;
   inj-event(SMDP_AuthenticatedClient(es1)) ==>
   inj-event(eUICC_SentEuiccSigned1(es1)).
 
-(* Q3: session key secrecy — expected FALSE *)
+(* Q3: session key secrecy: expected FALSE *)
 query attacker(sessionKeyTest).
 
-(* Q4: profile confidentiality — expected FALSE *)
+(* Q4: profile confidentiality: expected FALSE *)
 query attacker(profileSecret).
 
-(* Q5: binding integrity — expected TRUE *)
+(* Q5: binding integrity: expected TRUE *)
 query tid: bitstring, prof: bitstring;
   event(eUICC_InstalledProfile(tid, prof)) ==>
   event(SMDP_SentProfile(tid, prof)).
 
-(* Q6: forward secrecy — expected FALSE *)
+(* Q6: forward secrecy: expected FALSE *)
 query attacker(sessionKeyTest) phase 0.
 
 (* ===========================================================

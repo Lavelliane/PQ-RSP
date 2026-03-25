@@ -1,10 +1,10 @@
 (* ===========================================================
-   SGP.22 Consumer RSP — Option (b): PQ-TLS Transport Only
+   SGP.22 Consumer RSP: Option (b): PQ-TLS Transport Only
    ECDSA signatures + ECDH key agreement (identical to option a)
    ES9+ LPA↔SM-DP+ link is PQ-TLS-protected (private channel).
    eUICC↔LPA link remains on the public channel.
 
-   Reference: plan.md — Option (b)
+   Reference: protocol-details.md, option (b).
 
    Purpose: shows that PQ-TLS on the ES9+ transport layer alone
    does not change the application-layer security properties;
@@ -79,7 +79,7 @@ event SMDP_SentProfile(bitstring, bitstring).
 event eUICC_InstalledProfile(bitstring, bitstring).
 
 (* ===========================================================
-   Security Queries — identical to option (a)
+   Security Queries: identical to option (a)
    =========================================================== *)
 
 query ss1: bitstring;
@@ -101,7 +101,7 @@ query tid: bitstring, prof: bitstring;
 query attacker(sessionKeyTest) phase 0.
 
 (* ===========================================================
-   SM-DP+ Process — uses c_pqtls (ES9+ interface)
+   SM-DP+ Process: uses c_pqtls (ES9+ interface)
    plan.md steps: 8, 9, 16, 17, 18, 24, 25, 29
    =========================================================== *)
 let processSMDP(skDPauth: skey, skDPpb: skey,
@@ -178,7 +178,7 @@ let processSMDP(skDPauth: skey, skDPpb: skey,
 
 
 (* ===========================================================
-   LPA Relay Process — honest passive relay between c and c_pqtls
+   LPA Relay Process: honest passive relay between c and c_pqtls
    plan.md: "model the LPA as a passive relay"
    =========================================================== *)
 let processLPA =
@@ -217,7 +217,7 @@ let processLPA =
 
 
 (* ===========================================================
-   eUICC Process — uses c (public channel to LPA), unchanged from (a)
+   eUICC Process: uses c (public channel to LPA), unchanged from (a)
    plan.md steps: 3, 4, 12, 13, 14, 20, 21, 22, 27, 28
    =========================================================== *)
 let processEUICC(skEUICC: skey, certEUICC: bitstring, certEUM: bitstring,

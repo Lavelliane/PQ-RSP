@@ -1,5 +1,5 @@
 ```markdown
-# SGP.22 Consumer RSP — Full Protocol Step Reference
+# SGP.22 Consumer RSP: Full Protocol Step Reference
 # For ProVerif model construction
 # Options: (a) classical baseline | (b) PQ-TLS transport only |
 #          (c) ML-DSA auth + classical ECDH | (d) full PQC (ML-DSA + ML-KEM)
@@ -50,9 +50,9 @@
 
 ---
 
-## Phase 1 — Mutual Authentication (Steps 1–16)
+## Phase 1: Mutual Authentication (Steps 1-16)
 
-### Step 1 — eUICC Info Retrieval
+### Step 1: eUICC Info Retrieval
 
 **Actor: LPA → eUICC**
 
@@ -67,7 +67,7 @@
 
 ---
 
-### Step 2 — Challenge Request
+### Step 2: Challenge Request
 
 **Actor: LPA → eUICC**
 
@@ -79,7 +79,7 @@
 
 ---
 
-### Step 3 — eUICC Challenge Generation
+### Step 3: eUICC Challenge Generation
 
 **Actor: eUICC (internal)**
 
@@ -91,7 +91,7 @@
 
 ---
 
-### Step 4 — Challenge Delivery
+### Step 4: Challenge Delivery
 
 **Actor: eUICC → LPA**
 
@@ -103,7 +103,7 @@
 
 ---
 
-### Step 5 — Secure Channel Establishment
+### Step 5: Secure Channel Establishment
 
 **Actor: LPA ↔ SM-DP+ (ES9+ interface)**
 
@@ -119,7 +119,7 @@ Options (b, c, d): PQ-TLS or KEM-TLS Secure Channel
 
 ---
 
-### Step 6 — LPA Pre-checks
+### Step 6: LPA Pre-checks
 
 **Actor: LPA (internal)**
 
@@ -133,7 +133,7 @@ Options (b, c, d): PQ-TLS or KEM-TLS Secure Channel
 
 ---
 
-### Step 7 — Challenge Forwarding to SM-DP+
+### Step 7: Challenge Forwarding to SM-DP+
 
 **Actor: LPA → SM-DP+**
 
@@ -145,7 +145,7 @@ Options (b, c, d): PQ-TLS or KEM-TLS Secure Channel
 
 ---
 
-### Step 8 — Server Authentication Data Construction
+### Step 8: Server Authentication Data Construction
 
 **Actor: SM-DP+ (internal)**
 
@@ -174,7 +174,7 @@ Options (b, c, d): PQ-TLS or KEM-TLS Secure Channel
 
 ---
 
-### Step 9 — Server Authentication Message
+### Step 9: Server Authentication Message
 
 **Actor: SM-DP+ → LPA**
 
@@ -192,7 +192,7 @@ Options (b, c, d): PQ-TLS or KEM-TLS Secure Channel
 
 ---
 
-### Step 10 — LPA Processing
+### Step 10: LPA Processing
 
 **Actor: LPA (internal)**
 
@@ -205,7 +205,7 @@ Options (b, c, d): PQ-TLS or KEM-TLS Secure Channel
 
 ---
 
-### Step 11 — AuthenticateServer Command
+### Step 11: AuthenticateServer Command
 
 **Actor: LPA → eUICC**
 
@@ -224,7 +224,7 @@ Options (b, c, d): PQ-TLS or KEM-TLS Secure Channel
 
 ---
 
-### Step 12 — eUICC Server Verification
+### Step 12: eUICC Server Verification
 
 **Actor: eUICC (internal)**
 
@@ -250,12 +250,12 @@ All options (shared):
 ```
 
 - **ProVerif note**: step 12c is the primary authentication
-  goal — injective agreement on serverSigned1 from eUICC's
+  goal: injective agreement on serverSigned1 from eUICC's
   perspective; 12d prevents replay
 
 ---
 
-### Step 13 — eUICC Signed Response Construction
+### Step 13: eUICC Signed Response Construction
 
 **Actor: eUICC (internal)**
 
@@ -277,7 +277,7 @@ All options (shared):
 
 ---
 
-### Step 14 — eUICC Authentication Response
+### Step 14: eUICC Authentication Response
 
 **Actor: eUICC → LPA**
 
@@ -292,7 +292,7 @@ All options (shared):
 
 ---
 
-### Step 15 — AuthenticateClient Command
+### Step 15: AuthenticateClient Command
 
 **Actor: LPA → SM-DP+**
 
@@ -307,7 +307,7 @@ All options (shared):
 
 ---
 
-### Step 16 — SM-DP+ Client Verification
+### Step 16: SM-DP+ Client Verification
 
 **Actor: SM-DP+ (internal)**
 
@@ -340,11 +340,11 @@ All options (shared):
 
 ---
 
-## Phase 2 — Profile Download (Steps 17–29)
+## Phase 2: Profile Download (Steps 17-29)
 
 ---
 
-### Step 17 — Profile Binding Data Construction
+### Step 17: Profile Binding Data Construction
 
 **Actor: SM-DP+ (internal)**
 
@@ -364,7 +364,7 @@ All options (shared):
 
 ---
 
-### Step 18 — PrepareDownload to LPA
+### Step 18: PrepareDownload to LPA
 
 **Actor: SM-DP+ → LPA**
 
@@ -380,7 +380,7 @@ All options (shared):
 
 ---
 
-### Step 19 — PrepareDownload to eUICC
+### Step 19: PrepareDownload to eUICC
 
 **Actor: LPA → eUICC**
 
@@ -398,7 +398,7 @@ All options (shared):
 
 ---
 
-### Step 20 — eUICC Profile Binding Verification
+### Step 20: eUICC Profile Binding Verification
 
 **Actor: eUICC (internal)**
 
@@ -421,7 +421,7 @@ All options (shared):
 
 ---
 
-### Step 21 — eUICC Ephemeral Key Generation
+### Step 21: eUICC Ephemeral Key Generation
 
 **Actor: eUICC (internal)**
 
@@ -429,7 +429,7 @@ All options (shared):
 > options (a,b,c) and option (d)
 
 ```
-Options (a, b, c) — ECDH path:
+Options (a, b, c): ECDH path:
   21a. Generate ephemeral ECDH key pair:
          ( otPK.EUICC.ECKA, otSK.EUICC.ECKA )
 
@@ -444,7 +444,7 @@ Options (a, b, c) — ECDH path:
        Option  (c):    MLDSA.Sign( SK.EUICC.MLDSA,
                                    euiccSigned2 || smdpSignature2 )
 
-Option (d) — ML-KEM path:
+Option (d): ML-KEM path:
   21a. Generate ephemeral ML-KEM-768 key pair:
          ( otPK.EUICC.MLKEM, otSK.EUICC.MLKEM )
          ← ML-KEM.KeyGen()
@@ -467,7 +467,7 @@ Option (d) — ML-KEM path:
 
 ---
 
-### Step 22 — eUICC Key Material Delivery
+### Step 22: eUICC Key Material Delivery
 
 **Actor: eUICC → LPA**
 
@@ -477,7 +477,7 @@ Option (d) — ML-KEM path:
 
 ---
 
-### Step 23 — GetBoundProfilePackage Request
+### Step 23: GetBoundProfilePackage Request
 
 **Actor: LPA → SM-DP+ (ES9+ interface)**
 
@@ -490,7 +490,7 @@ Option (d) — ML-KEM path:
 
 ---
 
-### Step 24 — SM-DP+ BPP Construction and Key Agreement
+### Step 24: SM-DP+ BPP Construction and Key Agreement
 
 **Actor: SM-DP+ (internal)**
 
@@ -498,7 +498,7 @@ Option (d) — ML-KEM path:
 > fundamentally between (a,b,c) and (d)
 
 ```
-Options (a, b) — ECDSA verify + ECDH key agreement:
+Options (a, b): ECDSA verify + ECDH key agreement:
   24a. Verify: ECDSA.Verify( PK.EUICC.ECDSA,
                              euiccSigned2,
                              euiccSignature2 )
@@ -517,7 +517,7 @@ Options (a, b) — ECDSA verify + ECDH key agreement:
   24h. Compute: serverSignature3 =
                   Sign( SK.DPpb.ECDSA, bind_body )
 
-Option (c) — ML-DSA verify + ECDH key agreement:
+Option (c): ML-DSA verify + ECDH key agreement:
   24a. Verify: MLDSA.Verify( PK.EUICC.MLDSA,
                              euiccSigned2,
                              euiccSignature2 )
@@ -536,7 +536,7 @@ Option (c) — ML-DSA verify + ECDH key agreement:
   24h. Compute: serverSignature3 =
                   MLDSA.Sign( SK.DPpb.MLDSA, bind_body )
 
-Option (d) — ML-DSA verify + ML-KEM encapsulation:
+Option (d): ML-DSA verify + ML-KEM encapsulation:
   24a. Verify: MLDSA.Verify( PK.EUICC.MLDSA,
                              euiccSigned2,
                              euiccSignature2 )
@@ -555,7 +555,7 @@ Option (d) — ML-DSA verify + ML-KEM encapsulation:
 ```
 
 - **ProVerif note**: `bind_body` structure is not interchangeable
-  between (a,b,c) and (d) — model as distinct message formats
+  between (a,b,c) and (d): model as distinct message formats
 - Under (a,b,c): `bind_body` contains two EC public keys
   (contributory DH); under (d): `bind_body` contains a KEM
   ciphertext `ct` (non-contributory; only eUICC contributes
@@ -566,7 +566,7 @@ Option (d) — ML-DSA verify + ML-KEM encapsulation:
 
 ---
 
-### Step 25 — BoundProfilePackage Delivery to LPA
+### Step 25: BoundProfilePackage Delivery to LPA
 
 **Actor: SM-DP+ → LPA**
 
@@ -581,7 +581,7 @@ Option (d) — ML-DSA verify + ML-KEM encapsulation:
 
 ---
 
-### Step 26 — LoadBoundProfilePackage Command
+### Step 26: LoadBoundProfilePackage Command
 
 **Actor: LPA → eUICC**
 
@@ -597,7 +597,7 @@ Option (d) — ML-DSA verify + ML-KEM encapsulation:
 
 ---
 
-### Step 27 — eUICC Profile Installation
+### Step 27: eUICC Profile Installation
 
 **Actor: eUICC (internal)**
 
@@ -606,7 +606,7 @@ Option (d) — ML-DSA verify + ML-KEM encapsulation:
 > may coexist in working memory between 27b and 27f
 
 ```
-All options — serverSignature3 verification:
+All options: serverSignature3 verification:
   Options (a, b): 27a. Verify: ECDSA.Verify( PK.DPpb.ECDSA,
                                              bind_body,
                                              serverSignature3 )
@@ -638,14 +638,14 @@ Installation result signature:
 ```
 
 - **ProVerif note**: 27d MAC verification is the BPP
-  integrity goal — models that KE-encrypted profile was
+  integrity goal: models that KE-encrypted profile was
   prepared by the authenticated SM-DP+
 - **ProVerif note**: 27b under option (d) closes the
   IND-CCA2 loop; ShS must equal the ShS derived at 24c
 
 ---
 
-### Step 28 — ProfileInstallationResult
+### Step 28: ProfileInstallationResult
 
 **Actor: eUICC → LPA**
 
@@ -660,7 +660,7 @@ Installation result signature:
 
 ---
 
-### Step 29 — HandleNotification
+### Step 29: HandleNotification
 
 **Actor: LPA → SM-DP+**
 
@@ -680,7 +680,7 @@ Installation result signature:
 
 ## Summary: Step-to-Primitive Mapping
 
-### Phase 1 — Authentication
+### Phase 1: Authentication
 
 | Step | Actor         | Operation         | (a,b)       | (c,d)       |
 |------|---------------|-------------------|-------------|-------------|
@@ -691,7 +691,7 @@ Installation result signature:
 | 16b  | SM-DP+        | Verify CERT.EUICC | ECDSA chain | MLDSA chain |
 | 16d  | SM-DP+        | Verify euiccSig1  | ECDSA.Vrfy  | MLDSA.Vrfy  |
 
-### Phase 2 — Download
+### Phase 2: Download
 
 | Step | Actor  | Operation              | (a,b)         | (c)           | (d)           |
 |------|--------|------------------------|---------------|---------------|---------------|
@@ -741,12 +741,12 @@ Installation result signature:
   and `k` is indistinguishable from random under IND-CCA2
 
 - Model `ML-DSA.Sign` / `ML-DSA.Verify` identically to
-  ECDSA in ProVerif syntax — both are EUF-CMA signatures;
+  ECDSA in ProVerif syntax. Both are EUF-CMA signatures;
   distinguish only by key type in the type system
 
 - Model the LPA as a passive relay in Phase 1 steps 7, 9,
-  11, 14, 15 and Phase 2 steps 18, 19, 22, 23, 25, 26, 28, 29
-  — it does not perform cryptographic operations on the
+  11, 14, 15 and Phase 2 steps 18, 19, 22, 23, 25, 26, 28, 29.
+  It does not perform cryptographic operations on the
   message payloads (only address/token operations at 6 and 10)
 
 - `TransactionID` must appear in every signed structure;
