@@ -36,10 +36,6 @@ fun dh(dhskey, dhpkey): bitstring.
 equation forall a: dhskey, b: dhskey;
   dh(a, dhpk(b)) = dh(b, dhpk(a)).
 
-(* --- Quantum oracle: break_dh(pkA, pkB) → shS --- *)
-fun break_dh(dhpkey, dhpkey): bitstring.
-equation forall a: dhskey, b: dhskey;
-  break_dh(dhpk(a), dhpk(b)) = dh(a, dhpk(b)).
 
 (* --- Symmetric encryption --- *)
 fun senc(bitstring, bitstring): bitstring.

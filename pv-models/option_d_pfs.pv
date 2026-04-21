@@ -1,6 +1,6 @@
 (* ============================================================
-   SGP.22 Consumer RSP — Option (b): PQ-TLS Transport
-   ECDSA authentication + ECDH key exchange + PQ-TLS transport
+   SGP.22 Consumer RSP — Option (d): Full Post-Quantum
+   PFS Test: no break_dh, single session, phase 1 key reveal
    ============================================================ *)
 
 (* --- Channels --- *)
@@ -8,20 +8,22 @@ free ch: channel.          (* public channel (LPA relay, attacker-visible) *)
 free ch_tls: channel.  (* PQ-TLS channel (LPA ↔ SM-DP+) *)
 
 (* --- Types --- *)
-type skey.      (* ECDSA signing key *)
-type pkey.      (* ECDSA verification key *)
-type dhskey.    (* ECDH private key *)
-type dhpkey.    (* ECDH public key *)
+type skey.       (* ML-DSA signing key *)
+type pkey.       (* ML-DSA verification key *)
+type kemsk.      (* ML-KEM secret (decapsulation) key *)
+type kempk.      (* ML-KEM public (encapsulation) key *)
+type kemct.      (* ML-KEM ciphertext *)
 type nonce.
-type tid.       (* transaction ID *)
-type profile.   (* eSIM profile *)
+type tid.
+type profile.
 type iccid.
+type dhskey.     (* ECDH private key — unused in option d *)
+type dhpkey.     (* ECDH public key — unused in option d *)
 
-(* --- Constants --- *)
+(* --- Constants and type converters --- *)
 fun SUCCESS(): bitstring [data].
 fun tid_to_bs(tid): bitstring [data, typeConverter].
 fun prof_to_bs(profile): bitstring [data, typeConverter].
-fun iccid_to_bs(iccid): bitstring [data, typeConverter].
 
 free secretProfile: profile [private].
 
@@ -30,16 +32,20 @@ fun sign(bitstring, skey): bitstring.
 fun pk(skey): pkey.
 reduc forall m: bitstring, k: skey; verify(m, sign(m, k), pk(k)) = true.
 
-(* --- ECDH key agreement --- *)
+(* --- ML-KEM (IND-CCA2 KEM) --- *)
+fun kem_pk(kemsk): kempk.
+type kemcoin.
+fun kem_encaps_ct(kempk, kemcoin): kemct.
+fun kem_encaps_ss(kempk, kemcoin): bitstring.
+fun kem_decaps(kemsk, kemct): bitstring.
+equation forall sk: kemsk, coin: kemcoin;
+  kem_decaps(sk, kem_encaps_ct(kem_pk(sk), coin)) = kem_encaps_ss(kem_pk(sk), coin).
+
+(* --- ECDH (not used in option d) --- *)
 fun dhpk(dhskey): dhpkey.
 fun dh(dhskey, dhpkey): bitstring.
 equation forall a: dhskey, b: dhskey;
   dh(a, dhpk(b)) = dh(b, dhpk(a)).
-
-(* --- Quantum oracle: break_dh(pkA, pkB) → shS --- *)
-fun break_dh(dhpkey, dhpkey): bitstring.
-equation forall a: dhskey, b: dhskey;
-  break_dh(dhpk(a), dhpk(b)) = dh(a, dhpk(b)).
 
 (* --- Symmetric encryption --- *)
 fun senc(bitstring, bitstring): bitstring.
@@ -52,14 +58,12 @@ fun mac(bitstring, bitstring): bitstring.
 fun kdf_enc(bitstring): bitstring.
 fun kdf_mac(bitstring): bitstring.
 
-(* --- Certificates --- *)
+(* --- Certificates (ML-DSA-based for option d) --- *)
 fun cert(bitstring, pkey, skey): bitstring.
 reduc forall id: bitstring, spk: pkey, ci_sk: skey;
   cert_verify(cert(id, spk, ci_sk), pk(ci_sk)) = true.
 reduc forall id: bitstring, spk: pkey, ci_sk: skey;
   cert_extract_pk(cert(id, spk, ci_sk)) = spk.
-reduc forall id: bitstring, spk: pkey, ci_sk: skey;
-  cert_extract_id(cert(id, spk, ci_sk)) = id.
 
 fun cert_pb(bitstring, pkey, skey): bitstring.
 reduc forall id: bitstring, spk: pkey, ci_sk: skey;
@@ -67,9 +71,9 @@ reduc forall id: bitstring, spk: pkey, ci_sk: skey;
 reduc forall id: bitstring, spk: pkey, ci_sk: skey;
   cert_pb_extract_pk(cert_pb(id, spk, ci_sk)) = spk.
 
-table euicc_session(tid, dhskey).
-
-(* --- Events --- *)
+(* ==============================================================
+   EVENTS
+   ============================================================== *)
 
 event eUICC_authenticated_server(tid, bitstring).
 event SMDP_sent_serverSigned1(tid, bitstring).
@@ -117,180 +121,152 @@ query t: tid, bb: bitstring;
   event(SMDP_bound_profile(t, bb)).
 
 (* ==============================================================
-   SM-DP+ PROCESS
+   SM-DP+ PROCESS (Option d — Full PQC)
    ============================================================== *)
 
 let SMDP(sk_dpauth: skey, sk_dppb: skey,
          cert_dpauth: bitstring, cert_dppb: bitstring,
          pk_ci: pkey) =
+
   (* --- Phase 1: Mutual Authentication --- *)
 
-  (* Step 7: receive eUICCChallenge from LPA *)
   in(ch_tls, (euiccChallenge: nonce, euiccInfo1: bitstring, smdpAddr: bitstring));
 
-  (* Step 8: construct serverSigned1 *)
   new transID: tid;
   new serverChallenge: nonce;
   let serverSigned1 = (transID, euiccChallenge, serverChallenge, smdpAddr) in
-  let serverSig1 = sign(serverSigned1, sk_dpauth) in
+  let serverSig1 = sign(serverSigned1, sk_dpauth) in  (* ML-DSA.Sign *)
 
   event SMDP_sent_serverSigned1(transID, serverSigned1);
 
-  (* Step 9: send to LPA *)
   out(ch_tls, (transID, serverSigned1, serverSig1, cert_dpauth));
 
-  (* Step 15: receive AuthenticateClient from LPA *)
   in(ch_tls, (euiccSigned1: bitstring, euiccSig1: bitstring,
               cert_euicc: bitstring, cert_eum: bitstring));
 
-  (* Step 16: SM-DP+ client verification *)
   let (=transID, =serverChallenge, euiccInfo2: bitstring, ctxParams1: bitstring) = euiccSigned1 in
   if cert_verify(cert_euicc, pk_ci) = true then
   if cert_verify(cert_eum, pk_ci) = true then
   let pk_euicc = cert_extract_pk(cert_euicc) in
-  if verify(euiccSigned1, euiccSig1, pk_euicc) = true then
+  if verify(euiccSigned1, euiccSig1, pk_euicc) = true then  (* ML-DSA.Verify *)
 
   event SMDP_authenticated_client(transID, euiccSigned1);
 
-  (* --- Phase 2: Profile Download --- *)
+  (* --- Phase 2: Profile Download (ML-KEM only) --- *)
 
-  (* Step 17: profile binding data *)
   let smdpSigned2 = tid_to_bs(transID) in
-  let smdpSig2 = sign(smdpSigned2, sk_dppb) in
+  let smdpSig2 = sign(smdpSigned2, sk_dppb) in  (* ML-DSA.Sign *)
 
-  (* Step 18: send PrepareDownload to LPA *)
   out(ch_tls, (transID, smdpSigned2, smdpSig2, cert_dppb));
 
-  (* Step 23: receive GetBoundProfilePackage *)
   in(ch_tls, (euiccSigned2: bitstring, euiccSig2: bitstring));
 
-  (* Step 24: verify and key agreement *)
-  let (=transID, otPK_euicc_ecka: dhpkey) = euiccSigned2 in
+  (* Step 24: euiccSigned2 contains only ML-KEM public key (no ECDH) *)
+  let (=transID, otPK_euicc_mlkem: kempk) = euiccSigned2 in
   if verify((euiccSigned2, smdpSig2), euiccSig2, pk_euicc) = true then
 
-  (* 24b: generate ephemeral ECDH *)
-  new otSK_dp_ecka: dhskey;
-  let otPK_dp_ecka = dhpk(otSK_dp_ecka) in
+  (* 24b: ML-KEM Encaps *)
+  new kemCoin: kemcoin;
+  let ct = kem_encaps_ct(otPK_euicc_mlkem, kemCoin) in
+  let sharedSecret = kem_encaps_ss(otPK_euicc_mlkem, kemCoin) in
 
-  (* 24c: ECDH shared secret *)
-  let sharedSecret = dh(otSK_dp_ecka, otPK_euicc_ecka) in
-
-  (* 24d: derive keys *)
+  (* 24c: derive keys *)
   let ke = kdf_enc(sharedSecret) in
   let km = kdf_mac(sharedSecret) in
 
   event SMDP_derived_session_key(transID, sharedSecret);
 
-  (* 24e: encrypt profile *)
+  (* 24d: encrypt profile *)
   let bpp = senc(prof_to_bs(secretProfile), ke) in
 
-  (* 24f: bind_body *)
-  let bind_body = (transID, otPK_dp_ecka, otPK_euicc_ecka, bpp) in
+  (* 24e: bind_body *)
+  let bind_body = (transID, ct, bpp) in
 
-  (* 24g: MAC and signature *)
+  (* 24f: MAC and signature *)
   let bind_mac = mac(bind_body, km) in
-  let serverSig3 = sign(bind_body, sk_dppb) in
+  let serverSig3 = sign(bind_body, sk_dppb) in  (* ML-DSA.Sign *)
 
   event SMDP_bound_profile(transID, bind_body);
 
-  (* Step 25: send BoundProfilePackage *)
   out(ch_tls, (transID, bind_body, bind_mac, serverSig3));
 
-  (* Step 29: receive notification *)
   in(ch_tls, (=transID, =SUCCESS(), resultIccid: iccid, euiccSig3: bitstring));
   0.
 
 (* ==============================================================
-   eUICC PROCESS
+   eUICC PROCESS (Option d — Full PQC)
    ============================================================== *)
 
 let eUICC(sk_euicc: skey, cert_euicc: bitstring, cert_eum: bitstring,
           pk_ci: pkey) =
 
-  (* --- Phase 1: Mutual Authentication --- *)
+  (* --- Phase 1: Mutual Authentication (ML-DSA) --- *)
 
-  (* Step 3: generate challenge *)
   new euiccChallenge: nonce;
   let euiccInfo1 = (euiccChallenge) in
-
-  (* Step 4/7: send challenge via LPA to SM-DP+ *)
   new smdpAddr: bitstring;
   out(ch, (euiccChallenge, euiccInfo1, smdpAddr));
 
-  (* Step 11: receive AuthenticateServer from LPA *)
   in(ch, (transID: tid, serverSigned1: bitstring, serverSig1: bitstring,
           rcv_cert_dpauth: bitstring, ctxParams1: bitstring));
 
-  (* Step 12: eUICC server verification *)
   if cert_verify(rcv_cert_dpauth, pk_ci) = true then
   let pk_dpauth = cert_extract_pk(rcv_cert_dpauth) in
-  if verify(serverSigned1, serverSig1, pk_dpauth) = true then
+  if verify(serverSigned1, serverSig1, pk_dpauth) = true then  (* ML-DSA.Verify *)
   let (=transID, =euiccChallenge, serverChallenge: nonce, =smdpAddr) = serverSigned1 in
 
   event eUICC_authenticated_server(transID, serverSigned1);
 
-  (* Step 13: construct euiccSigned1 *)
   new euiccInfo2: bitstring;
   let euiccSigned1 = (transID, serverChallenge, euiccInfo2, ctxParams1) in
-  let euiccSig1 = sign(euiccSigned1, sk_euicc) in
+  let euiccSig1 = sign(euiccSigned1, sk_euicc) in  (* ML-DSA.Sign *)
 
   event eUICC_sent_euiccSigned1(transID, euiccSigned1);
 
-  (* Step 14: send to LPA *)
   out(ch, (euiccSigned1, euiccSig1, cert_euicc, cert_eum));
 
-  (* --- Phase 2: Profile Download --- *)
+  (* --- Phase 2: Profile Download (ML-KEM only) --- *)
 
-  (* Step 19: receive PrepareDownload from LPA *)
   in(ch, (=transID, smdpSigned2: bitstring, smdpSig2: bitstring,
           rcv_cert_dppb: bitstring));
 
-  (* Step 20: verify profile binding *)
   if cert_pb_verify(rcv_cert_dppb, pk_ci) = true then
   let pk_dppb = cert_pb_extract_pk(rcv_cert_dppb) in
   if verify(smdpSigned2, smdpSig2, pk_dppb) = true then
   if smdpSigned2 = tid_to_bs(transID) then
 
-  (* Step 21: ephemeral ECDH key generation *)
-  new otSK_euicc_ecka: dhskey;
-  let otPK_euicc_ecka = dhpk(otSK_euicc_ecka) in
+  (* Step 21: generate ephemeral ML-KEM keypair only (no ECDH) *)
+  new otSK_euicc_mlkem: kemsk;
+  let otPK_euicc_mlkem = kem_pk(otSK_euicc_mlkem) in
 
-  let euiccSigned2 = (transID, otPK_euicc_ecka) in
-  let euiccSig2 = sign((euiccSigned2, smdpSig2), sk_euicc) in
+  let euiccSigned2 = (transID, otPK_euicc_mlkem) in
+  let euiccSig2 = sign((euiccSigned2, smdpSig2), sk_euicc) in  (* ML-DSA.Sign *)
 
-  (* Step 22: send to LPA *)
   out(ch, (euiccSigned2, euiccSig2));
 
-  (* Step 26: receive LoadBoundProfilePackage from LPA *)
+  (* Step 26: receive BPP *)
   in(ch, (=transID, bind_body: bitstring, bind_mac: bitstring,
           serverSig3: bitstring));
 
-  (* Step 27: eUICC profile installation *)
-  if verify(bind_body, serverSig3, pk_dppb) = true then
-  let (=transID, otPK_dp_ecka: dhpkey, =otPK_euicc_ecka, bpp: bitstring) = bind_body in
+  if verify(bind_body, serverSig3, pk_dppb) = true then  (* ML-DSA.Verify *)
+  let (=transID, ct: kemct, bpp: bitstring) = bind_body in
 
-  (* 27b: ECDH key recovery *)
-  let sharedSecret = dh(otSK_euicc_ecka, otPK_dp_ecka) in
+  (* 27b: ML-KEM Decapsulation *)
+  let sharedSecret = kem_decaps(otSK_euicc_mlkem, ct) in
 
-  (* 27c: derive keys *)
   let ke = kdf_enc(sharedSecret) in
   let km = kdf_mac(sharedSecret) in
 
   event eUICC_derived_session_key(transID, sharedSecret);
 
-  (* 27d: verify MAC *)
   if mac(bind_body, km) = bind_mac then
 
-  (* 27e: decrypt profile *)
   let theProfile = sdec(bpp, ke) in
 
   event eUICC_installed_profile(transID, bind_body);
 
-  (* Step 27f/28: sign installation result *)
   new resultIccid: iccid;
   let euiccSig3 = sign((transID, SUCCESS(), resultIccid), sk_euicc) in
-
-  (* Step 28: send result to LPA *)
   out(ch, (transID, SUCCESS(), resultIccid, euiccSig3)).
 
 (* ==============================================================
@@ -298,32 +274,25 @@ let eUICC(sk_euicc: skey, cert_euicc: bitstring, cert_eum: bitstring,
    ============================================================== *)
 
 let LPA =
-  (* Phase 1 forward: eUICC → SM-DP+ *)
   in(ch, msg1: bitstring);
   out(ch_tls, msg1);
 
-  (* Phase 1 back: SM-DP+ → eUICC *)
   in(ch_tls, msg2: bitstring);
   new ctxParams1: bitstring;
   out(ch, (msg2, ctxParams1));
 
-  (* Phase 1 forward: eUICC → SM-DP+ *)
   in(ch, msg3: bitstring);
   out(ch_tls, msg3);
 
-  (* Phase 2 back: SM-DP+ → eUICC *)
   in(ch_tls, msg4: bitstring);
   out(ch, msg4);
 
-  (* Phase 2 forward: eUICC → SM-DP+ *)
   in(ch, msg5: bitstring);
   out(ch_tls, msg5);
 
-  (* Phase 2 back: SM-DP+ → eUICC *)
   in(ch_tls, msg6: bitstring);
   out(ch, msg6);
 
-  (* Result forward: eUICC → SM-DP+ *)
   in(ch, msg7: bitstring);
   out(ch_tls, msg7).
 
@@ -332,37 +301,36 @@ let LPA =
    ============================================================== *)
 
 process
-  (* CI root key *)
+  (* CI root key (ML-DSA) *)
   new sk_ci: skey;
   let pk_ci = pk(sk_ci) in
   out(ch, pk_ci);
 
-  (* SM-DP+ authentication keypair *)
+  (* SM-DP+ authentication keypair (ML-DSA) *)
   new sk_dpauth: skey;
-  let pk_dpauth = pk(sk_dpauth) in
   new id_dpauth: bitstring;
-  let cert_dpauth = cert(id_dpauth, pk_dpauth, sk_ci) in
+  let cert_dpauth = cert(id_dpauth, pk(sk_dpauth), sk_ci) in
 
-  (* SM-DP+ profile binding keypair *)
+  (* SM-DP+ profile binding keypair (ML-DSA) *)
   new sk_dppb: skey;
-  let pk_dppb = pk(sk_dppb) in
   new id_dppb: bitstring;
-  let cert_dppb = cert_pb(id_dppb, pk_dppb, sk_ci) in
+  let cert_dppb = cert_pb(id_dppb, pk(sk_dppb), sk_ci) in
 
-  (* eUICC authentication keypair *)
+  (* eUICC authentication keypair (ML-DSA) *)
   new sk_euicc: skey;
-  let pk_euicc = pk(sk_euicc) in
   new id_euicc: bitstring;
-  let cert_euicc_c = cert(id_euicc, pk_euicc, sk_ci) in
+  let cert_euicc_c = cert(id_euicc, pk(sk_euicc), sk_ci) in
 
-  (* EUM certificate *)
+  (* EUM certificate (ML-DSA) *)
   new sk_eum: skey;
-  let pk_eum = pk(sk_eum) in
   new id_eum: bitstring;
-  let cert_eum_c = cert(id_eum, pk_eum, sk_ci) in
+  let cert_eum_c = cert(id_eum, pk(sk_eum), sk_ci) in
 
   (
-    (!SMDP(sk_dpauth, sk_dppb, cert_dpauth, cert_dppb, pk_ci)) |
-    (!eUICC(sk_euicc, cert_euicc_c, cert_eum_c, pk_ci)) |
-    (!LPA)
-  )
+    (SMDP(sk_dpauth, sk_dppb, cert_dpauth, cert_dppb, pk_ci)) |
+    (eUICC(sk_euicc, cert_euicc_c, cert_eum_c, pk_ci)) |
+    (LPA)
+  ) |
+  (phase 1; out(ch, sk_dpauth)) |
+  (phase 1; out(ch, sk_dppb)) |
+  (phase 1; out(ch, sk_euicc))

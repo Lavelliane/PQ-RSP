@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 1006" width="840" height="1006">
+<rect width="840" height="1006" fill="#ffffff"/>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2d3748"/></marker>
+<marker id="arrow-atk" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#e53e3e"/></marker>
+</defs>
+<text x="420" y="22" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#1a202c">HNDL Attack — Options (a) and (b)</text>
+<text x="420" y="40" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" fill="#718096">break_dh oracle recovers ECDH shared secret; Q5 FALSE, Q6 FALSE</text>
+<rect x="100" y="54" width="120" height="40" rx="6" fill="#f0f4f8" stroke="#4a5568" stroke-width="1.5"/>
+<text x="160" y="79" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1a202c">eUICC</text>
+<rect x="360" y="54" width="120" height="40" rx="6" fill="#fff5f5" stroke="#e53e3e" stroke-width="1.5"/>
+<text x="420" y="79" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#c53030">Attacker</text>
+<rect x="620" y="54" width="120" height="40" rx="6" fill="#f0f4f8" stroke="#4a5568" stroke-width="1.5"/>
+<text x="680" y="79" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1a202c">SM-DP+</text>
+<line x1="160" y1="94" x2="160" y2="930" stroke="#cbd5e0" stroke-width="1" stroke-dasharray="6,3"/>
+<line x1="420" y1="94" x2="420" y2="930" stroke="#e53e3e" stroke-width="1" stroke-dasharray="4,4"/>
+<line x1="680" y1="94" x2="680" y2="930" stroke="#cbd5e0" stroke-width="1" stroke-dasharray="6,3"/>
+<line x1="20" y1="114" x2="820" y2="114" stroke="#718096" stroke-width="0.5" stroke-dasharray="3,3"/>
+<text x="420" y="129" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-style="italic" fill="#718096">Phase 1 — Mutual Authentication (unaffected)</text>
+<line x1="164" y1="166" x2="676" y2="166" stroke="#2d3748" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrow)"/>
+<text x="420" y="160" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#1a202c">serverSigned1, euiccSigned1 ...</text>
+<rect x="72" y="200" width="176" height="28" rx="4" fill="#f0fff4" stroke="#38a169" stroke-width="1"/>
+<text x="160" y="219" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#276749">Auth verified (Q1-Q4 TRUE)</text>
+<rect x="592" y="248" width="176" height="28" rx="4" fill="#f0fff4" stroke="#38a169" stroke-width="1"/>
+<text x="680" y="267" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#276749">Auth verified (Q1-Q4 TRUE)</text>
+<line x1="20" y1="306" x2="820" y2="306" stroke="#718096" stroke-width="0.5" stroke-dasharray="3,3"/>
+<text x="420" y="321" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-style="italic" fill="#718096">Phase 2 — Key Exchange (vulnerable)</text>
+<rect x="72" y="344" width="176" height="28" rx="4" fill="#f0f4f8" stroke="#4a5568" stroke-width="1"/>
+<text x="160" y="363" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#1a202c">KeyGen: (otSK, otPK.EUICC)</text>
+<line x1="164" y1="406" x2="676" y2="406" stroke="#2d3748" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="420" y="400" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#1a202c">euiccSigned2 = (tid, otPK.EUICC)</text>
+<rect x="340" y="440" width="160" height="28" rx="4" fill="#fff5f5" stroke="#e53e3e" stroke-width="1"/>
+<text x="420" y="459" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#c53030">Records otPK.EUICC</text>
+<rect x="600" y="488" width="160" height="28" rx="4" fill="#f0f4f8" stroke="#4a5568" stroke-width="1"/>
+<text x="680" y="507" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#1a202c">KeyGen: (otSK, otPK.DP)</text>
+<line x1="676" y1="550" x2="164" y2="550" stroke="#2d3748" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="420" y="544" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#1a202c">bind_body = (tid, otPK.DP, otPK.EUICC, BPP)</text>
+<rect x="340" y="584" width="160" height="28" rx="4" fill="#fff5f5" stroke="#e53e3e" stroke-width="1"/>
+<text x="420" y="603" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#c53030">Records otPK.DP, BPP</text>
+<line x1="20" y1="642" x2="820" y2="642" stroke="#718096" stroke-width="0.5" stroke-dasharray="3,3"/>
+<text x="420" y="657" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-style="italic" fill="#718096">Quantum Attack (retroactive)</text>
+<rect x="305" y="680" width="230" height="28" rx="4" fill="#fff5f5" stroke="#e53e3e" stroke-width="1"/>
+<text x="420" y="699" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#c53030">ShS = break_dh(otPK.EUICC, otPK.DP)</text>
+<rect x="340" y="728" width="160" height="28" rx="4" fill="#fff5f5" stroke="#e53e3e" stroke-width="1"/>
+<text x="420" y="747" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#c53030">KE = kdf_enc(ShS)</text>
+<rect x="340" y="776" width="160" height="28" rx="4" fill="#fff5f5" stroke="#e53e3e" stroke-width="1"/>
+<text x="420" y="795" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#c53030">profile = sdec(BPP, KE)</text>
+<rect x="340" y="824" width="160" height="28" rx="4" fill="#fff5f5" stroke="#e53e3e" stroke-width="1"/>
+<text x="420" y="843" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#c53030">Q5 FALSE: ShS recovered</text>
+<rect x="329" y="872" width="182" height="28" rx="4" fill="#fff5f5" stroke="#e53e3e" stroke-width="1"/>
+<text x="420" y="891" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#c53030">Q6 FALSE: profile decrypted</text>
+<text x="420" y="994" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" fill="#718096">PQ-TLS (option b) does not help — ECDH keys appear on the APDU channel</text>
+</svg>

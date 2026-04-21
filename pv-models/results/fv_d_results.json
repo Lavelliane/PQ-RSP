@@ -1,0 +1,58 @@
+{
+  "config": "d",
+  "description": "Full PQC — ML-DSA-44 auth + ML-KEM-768 key exchange + PQ-TLS transport",
+  "proverif_version": "2.05",
+  "model_file": "option_d.pv",
+  "scenarios": {
+    "oracle": {
+      "description": "Dolev-Yao attacker with break_dh quantum oracle",
+      "quantum_oracle": "break_dh equation active (inapplicable — no DH in protocol)",
+      "channel_model": "Both ch and ch_tls are public — attacker has full Dolev-Yao control over all channels",
+      "queries": {
+        "Q1_server_auth_agreement": true,
+        "Q2_server_auth_injective": true,
+        "Q3_client_auth_agreement": true,
+        "Q4_client_auth_injective": true,
+        "Q5_session_key_secrecy": true,
+        "Q6_bpp_confidentiality": true,
+        "Q7_binding_integrity": true,
+        "Q8_forward_secrecy": true
+      },
+      "oracle_analysis": {
+        "oracle_fired": false,
+        "oracle_fired_on": null,
+        "oracle_blocked_by": "No ECDH operations in protocol — oracle has no applicable terms",
+        "interpretation": "HNDL-resistant: protocol uses ML-KEM exclusively for key exchange. break_dh oracle is vacuously inapplicable"
+      },
+      "attack_traces": {},
+      "raw_output_sha256": "e22d5dfeabd22d365dc14cb603c33090f46c17dd8e0a80ea5ebf59f44e356c41"
+    },
+    "classical": {
+      "description": "Dolev-Yao attacker, no quantum capability",
+      "queries": {
+        "Q1_server_auth_agreement": true,
+        "Q2_server_auth_injective": true,
+        "Q3_client_auth_agreement": true,
+        "Q4_client_auth_injective": true,
+        "Q5_session_key_secrecy": true,
+        "Q6_bpp_confidentiality": true,
+        "Q7_binding_integrity": true
+      },
+      "raw_output_sha256": "4e99e8b7"
+    },
+    "pfs": {
+      "description": "Phase-separated PFS test: single session, signing keys revealed in phase 1, no break_dh",
+      "queries": {
+        "Q1_server_auth_agreement": true,
+        "Q2_server_auth_injective": true,
+        "Q3_client_auth_agreement": true,
+        "Q4_client_auth_injective": true,
+        "Q5_session_key_secrecy": true,
+        "Q6_bpp_confidentiality": true,
+        "Q7_binding_integrity": true
+      },
+      "raw_output_sha256": "d6802bca"
+    }
+  },
+  "timestamp": "2026-04-19T01:50:00Z"
+}

@@ -1,0 +1,63 @@
+{
+  "config": "c",
+  "description": "Hybrid — ECDSA auth + ECDH + ML-KEM-768 key exchange + combine_kdf + PQ-TLS transport",
+  "proverif_version": "2.05",
+  "model_file": "option_c.pv",
+  "scenarios": {
+    "oracle": {
+      "description": "Dolev-Yao attacker with break_dh quantum oracle",
+      "quantum_oracle": "break_dh equation active",
+      "channel_model": "Both ch and ch_tls are public — attacker has full Dolev-Yao control over all channels",
+      "queries": {
+        "Q1_server_auth_agreement": true,
+        "Q2_server_auth_injective": true,
+        "Q3_client_auth_agreement": true,
+        "Q4_client_auth_injective": true,
+        "Q5_session_key_secrecy": true,
+        "Q6_bpp_confidentiality": true,
+        "Q7_binding_integrity": true,
+        "Q8_forward_secrecy": true,
+        "QD_ecdh_component_diagnostic": false
+      },
+      "oracle_analysis": {
+        "oracle_fired": true,
+        "oracle_fired_on": "break_dh(dhpk(otSK_dp_ecka), dhpk(otSK_euicc_ecka)) = dh(otSK_euicc_ecka, dhpk(otSK_dp_ecka))",
+        "oracle_blocked_by": "combine_kdf(shS_ecdh, shS_mlkem) — attacker recovers shS_ecdh via break_dh but cannot evaluate combine_kdf without shS_mlkem",
+        "interpretation": "HNDL-resistant: diagnostic confirms oracle fired (QD=FALSE), but Q5/Q6 remain TRUE because combine_kdf blocks completion. The ML-KEM component (shS_mlkem) is unrecoverable without otSK.EUICC.MLKEM"
+      },
+      "attack_traces": {
+        "QD": "Attacker applies break_dh(dhpk(otSK_dp_ecka), dhpk(otSK_euicc_ecka)) to recover shS_ecdh, proving oracle is active"
+      },
+      "raw_output_sha256": "1428d64ed38d49a7f5b7b202ec62237137a007f87a104971d6617ad207fa9058"
+    },
+    "classical": {
+      "description": "Dolev-Yao attacker, no quantum capability",
+      "queries": {
+        "Q1_server_auth_agreement": true,
+        "Q2_server_auth_injective": true,
+        "Q3_client_auth_agreement": true,
+        "Q4_client_auth_injective": true,
+        "Q5_session_key_secrecy": true,
+        "Q6_bpp_confidentiality": true,
+        "Q7_binding_integrity": true,
+        "QD_ecdh_component_diagnostic": true
+      },
+      "raw_output_sha256": "091b3932"
+    },
+    "pfs": {
+      "description": "Phase-separated PFS test: single session, signing keys revealed in phase 1, no break_dh",
+      "queries": {
+        "Q1_server_auth_agreement": true,
+        "Q2_server_auth_injective": true,
+        "Q3_client_auth_agreement": true,
+        "Q4_client_auth_injective": true,
+        "Q5_session_key_secrecy": true,
+        "Q6_bpp_confidentiality": true,
+        "Q7_binding_integrity": true,
+        "QD": true
+      },
+      "raw_output_sha256": "ea013e17"
+    }
+  },
+  "timestamp": "2026-04-19T01:50:00Z"
+}

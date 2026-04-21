@@ -1,0 +1,605 @@
+Linear part:
+dh(a,dhpk(b)) = dh(b,dhpk(a))
+Completing equations...
+Completed equations:
+dh(a,dhpk(b)) = dh(b,dhpk(a))
+Convergent part:
+kem_decaps(sk,kem_encaps_ct(kem_pk(sk),coin)) = kem_encaps_ss(kem_pk(sk),coin)
+Completing equations...
+Completed equations:
+kem_decaps(sk,kem_encaps_ct(kem_pk(sk),coin)) = kem_encaps_ss(kem_pk(sk),coin)
+Process 0 (that is, the initial process):
+{1}new sk_ci: skey;
+{2}let pk_ci: pkey = pk(sk_ci) in
+{3}out(ch, pk_ci);
+{4}new sk_dpauth: skey;
+{5}new id_dpauth: bitstring;
+{6}let cert_dpauth: bitstring = cert(id_dpauth,pk(sk_dpauth),sk_ci) in
+{7}new sk_dppb: skey;
+{8}new id_dppb: bitstring;
+{9}let cert_dppb: bitstring = cert_pb(id_dppb,pk(sk_dppb),sk_ci) in
+{10}new sk_euicc: skey;
+{11}new id_euicc: bitstring;
+{12}let cert_euicc_c: bitstring = cert(id_euicc,pk(sk_euicc),sk_ci) in
+{13}new sk_eum: skey;
+{14}new id_eum: bitstring;
+{15}let cert_eum_c: bitstring = cert(id_eum,pk(sk_eum),sk_ci) in
+(
+    {16}!
+    {17}let sk_dpauth_1: skey = sk_dpauth in
+    {18}let sk_dppb_1: skey = sk_dppb in
+    {19}in(ch_tls, (euiccChallenge: nonce,euiccInfo1: bitstring,smdpAddr: bitstring));
+    {20}new transID: tid;
+    {21}new serverChallenge: nonce;
+    {22}let serverSigned1: bitstring = (transID,euiccChallenge,serverChallenge,smdpAddr) in
+    {23}let serverSig1: bitstring = sign(serverSigned1,sk_dpauth_1) in
+    {24}event SMDP_sent_serverSigned1(transID,serverSigned1);
+    {25}out(ch_tls, (transID,serverSigned1,serverSig1,cert_dpauth));
+    {26}in(ch_tls, (euiccSigned1: bitstring,euiccSig1: bitstring,cert_euicc: bitstring,cert_eum: bitstring));
+    {27}let (=transID,=serverChallenge,euiccInfo2: bitstring,ctxParams1: bitstring) = euiccSigned1 in
+    {28}if (cert_verify(cert_euicc,pk_ci) = true) then
+    {29}if (cert_verify(cert_eum,pk_ci) = true) then
+    {30}let pk_euicc: pkey = cert_extract_pk(cert_euicc) in
+    {31}if (verify(euiccSigned1,euiccSig1,pk_euicc) = true) then
+    {32}event SMDP_authenticated_client(transID,euiccSigned1);
+    {33}let smdpSigned2: bitstring = transID in
+    {34}let smdpSig2: bitstring = sign(smdpSigned2,sk_dppb_1) in
+    {35}out(ch_tls, (transID,smdpSigned2,smdpSig2,cert_dppb));
+    {36}in(ch_tls, (euiccSigned2: bitstring,euiccSig2: bitstring));
+    {37}let (=transID,otPK_euicc_ecka: dhpkey,otPK_euicc_mlkem: kempk) = euiccSigned2 in
+    {38}if (verify((euiccSigned2,smdpSig2),euiccSig2,pk_euicc) = true) then
+    {39}new otSK_dp_ecka: dhskey;
+    {40}let otPK_dp_ecka: dhpkey = dhpk(otSK_dp_ecka) in
+    {41}new kemCoin: kemcoin;
+    {42}let ct: kemct = kem_encaps_ct(otPK_euicc_mlkem,kemCoin) in
+    {43}let shS_mlkem: bitstring = kem_encaps_ss(otPK_euicc_mlkem,kemCoin) in
+    {44}let shS_ecdh: bitstring = dh(otSK_dp_ecka,otPK_euicc_ecka) in
+    {45}let sharedSecret: bitstring = combine_kdf(shS_ecdh,shS_mlkem) in
+    {46}let ke: bitstring = kdf_enc(sharedSecret) in
+    {47}let km: bitstring = kdf_mac(sharedSecret) in
+    {48}event SMDP_derived_session_key(transID,sharedSecret);
+    {49}let bpp: bitstring = senc(secretProfile,ke) in
+    {50}let bind_body: bitstring = (transID,otPK_dp_ecka,otPK_euicc_ecka,ct,bpp) in
+    {51}let bind_mac: bitstring = mac(bind_body,km) in
+    {52}let serverSig3: bitstring = sign(bind_body,sk_dppb_1) in
+    {53}event SMDP_bound_profile(transID,bind_body);
+    {54}out(ch_tls, (transID,bind_body,bind_mac,serverSig3));
+    {55}in(ch_tls, (=transID,=SUCCESS,resultIccid: iccid,euiccSig3: bitstring))
+) | (
+    {56}!
+    {57}let sk_euicc_1: skey = sk_euicc in
+    {58}new euiccChallenge_1: nonce;
+    {59}let euiccInfo1_1: nonce = euiccChallenge_1 in
+    {60}new smdpAddr_1: bitstring;
+    {61}out(ch, (euiccChallenge_1,euiccInfo1_1,smdpAddr_1));
+    {62}in(ch, (transID_1: tid,serverSigned1_1: bitstring,serverSig1_1: bitstring,rcv_cert_dpauth: bitstring,ctxParams1_1: bitstring));
+    {63}if (cert_verify(rcv_cert_dpauth,pk_ci) = true) then
+    {64}let pk_dpauth: pkey = cert_extract_pk(rcv_cert_dpauth) in
+    {65}if (verify(serverSigned1_1,serverSig1_1,pk_dpauth) = true) then
+    {66}let (=transID_1,=euiccChallenge_1,serverChallenge_1: nonce,=smdpAddr_1) = serverSigned1_1 in
+    {67}event eUICC_authenticated_server(transID_1,serverSigned1_1);
+    {68}new euiccInfo2_1: bitstring;
+    {69}let euiccSigned1_1: bitstring = (transID_1,serverChallenge_1,euiccInfo2_1,ctxParams1_1) in
+    {70}let euiccSig1_1: bitstring = sign(euiccSigned1_1,sk_euicc_1) in
+    {71}event eUICC_sent_euiccSigned1(transID_1,euiccSigned1_1);
+    {72}out(ch, (euiccSigned1_1,euiccSig1_1,cert_euicc_c,cert_eum_c));
+    {73}in(ch, (=transID_1,smdpSigned2_1: bitstring,smdpSig2_1: bitstring,rcv_cert_dppb: bitstring));
+    {74}if (cert_pb_verify(rcv_cert_dppb,pk_ci) = true) then
+    {75}let pk_dppb: pkey = cert_pb_extract_pk(rcv_cert_dppb) in
+    {76}if (verify(smdpSigned2_1,smdpSig2_1,pk_dppb) = true) then
+    {77}if (smdpSigned2_1 = transID_1) then
+    {78}new otSK_euicc_ecka: dhskey;
+    {79}let otPK_euicc_ecka_1: dhpkey = dhpk(otSK_euicc_ecka) in
+    {80}new otSK_euicc_mlkem: kemsk;
+    {81}let otPK_euicc_mlkem_1: kempk = kem_pk(otSK_euicc_mlkem) in
+    {82}let euiccSigned2_1: bitstring = (transID_1,otPK_euicc_ecka_1,otPK_euicc_mlkem_1) in
+    {83}let euiccSig2_1: bitstring = sign((euiccSigned2_1,smdpSig2_1),sk_euicc_1) in
+    {84}out(ch, (euiccSigned2_1,euiccSig2_1));
+    {85}in(ch, (=transID_1,bind_body_1: bitstring,bind_mac_1: bitstring,serverSig3_1: bitstring));
+    {86}if (verify(bind_body_1,serverSig3_1,pk_dppb) = true) then
+    {87}let (=transID_1,otPK_dp_ecka_1: dhpkey,=otPK_euicc_ecka_1,ct_1: kemct,bpp_1: bitstring) = bind_body_1 in
+    {88}let shS_ecdh_1: bitstring = dh(otSK_euicc_ecka,otPK_dp_ecka_1) in
+    {89}event eUICC_computed_ecdh_component(transID_1,shS_ecdh_1);
+    {90}let shS_mlkem_1: bitstring = kem_decaps(otSK_euicc_mlkem,ct_1) in
+    {91}let sharedSecret_1: bitstring = combine_kdf(shS_ecdh_1,shS_mlkem_1) in
+    {92}let ke_1: bitstring = kdf_enc(sharedSecret_1) in
+    {93}let km_1: bitstring = kdf_mac(sharedSecret_1) in
+    {94}event eUICC_derived_session_key(transID_1,sharedSecret_1);
+    {95}if (mac(bind_body_1,km_1) = bind_mac_1) then
+    {96}let theProfile: bitstring = sdec(bpp_1,ke_1) in
+    {97}event eUICC_installed_profile(transID_1,bind_body_1);
+    {98}new resultIccid_1: iccid;
+    {99}let euiccSig3_1: bitstring = sign((transID_1,SUCCESS,resultIccid_1),sk_euicc_1) in
+    {100}out(ch, (transID_1,SUCCESS,resultIccid_1,euiccSig3_1))
+) | (
+    {101}!
+    {102}in(ch, msg1: bitstring);
+    {103}out(ch_tls, msg1);
+    {104}in(ch_tls, msg2: bitstring);
+    {105}new ctxParams1_2: bitstring;
+    {106}out(ch, (msg2,ctxParams1_2));
+    {107}in(ch, msg3: bitstring);
+    {108}out(ch_tls, msg3);
+    {109}in(ch_tls, msg4: bitstring);
+    {110}out(ch, msg4);
+    {111}in(ch, msg5: bitstring);
+    {112}out(ch_tls, msg5);
+    {113}in(ch_tls, msg6: bitstring);
+    {114}out(ch, msg6);
+    {115}in(ch, msg7: bitstring);
+    {116}out(ch_tls, msg7)
+)
+
+--  Process 1 (that is, process 0, with let moved downwards):
+{1}new sk_ci: skey;
+{2}let pk_ci: pkey = pk(sk_ci) in
+{3}out(ch, pk_ci);
+{4}new sk_dpauth: skey;
+{5}new id_dpauth: bitstring;
+{7}new sk_dppb: skey;
+{8}new id_dppb: bitstring;
+{10}new sk_euicc: skey;
+{11}new id_euicc: bitstring;
+{13}new sk_eum: skey;
+{14}new id_eum: bitstring;
+(
+    {16}!
+    {19}in(ch_tls, (euiccChallenge: nonce,euiccInfo1: bitstring,smdpAddr: bitstring));
+    {20}new transID: tid;
+    {21}new serverChallenge: nonce;
+    {22}let serverSigned1: bitstring = (transID,euiccChallenge,serverChallenge,smdpAddr) in
+    {24}event SMDP_sent_serverSigned1(transID,serverSigned1);
+    {17}let sk_dpauth_1: skey = sk_dpauth in
+    {23}let serverSig1: bitstring = sign(serverSigned1,sk_dpauth_1) in
+    {6}let cert_dpauth: bitstring = cert(id_dpauth,pk(sk_dpauth),sk_ci) in
+    {25}out(ch_tls, (transID,serverSigned1,serverSig1,cert_dpauth));
+    {26}in(ch_tls, (euiccSigned1: bitstring,euiccSig1: bitstring,cert_euicc: bitstring,cert_eum: bitstring));
+    {27}let (=transID,=serverChallenge,euiccInfo2: bitstring,ctxParams1: bitstring) = euiccSigned1 in
+    {28}if (cert_verify(cert_euicc,pk_ci) = true) then
+    {29}if (cert_verify(cert_eum,pk_ci) = true) then
+    {30}let pk_euicc: pkey = cert_extract_pk(cert_euicc) in
+    {31}if (verify(euiccSigned1,euiccSig1,pk_euicc) = true) then
+    {32}event SMDP_authenticated_client(transID,euiccSigned1);
+    {33}let smdpSigned2: bitstring = transID in
+    {18}let sk_dppb_1: skey = sk_dppb in
+    {34}let smdpSig2: bitstring = sign(smdpSigned2,sk_dppb_1) in
+    {9}let cert_dppb: bitstring = cert_pb(id_dppb,pk(sk_dppb),sk_ci) in
+    {35}out(ch_tls, (transID,smdpSigned2,smdpSig2,cert_dppb));
+    {36}in(ch_tls, (euiccSigned2: bitstring,euiccSig2: bitstring));
+    {37}let (=transID,otPK_euicc_ecka: dhpkey,otPK_euicc_mlkem: kempk) = euiccSigned2 in
+    {38}if (verify((euiccSigned2,smdpSig2),euiccSig2,pk_euicc) = true) then
+    {39}new otSK_dp_ecka: dhskey;
+    {41}new kemCoin: kemcoin;
+    {44}let shS_ecdh: bitstring = dh(otSK_dp_ecka,otPK_euicc_ecka) in
+    {43}let shS_mlkem: bitstring = kem_encaps_ss(otPK_euicc_mlkem,kemCoin) in
+    {45}let sharedSecret: bitstring = combine_kdf(shS_ecdh,shS_mlkem) in
+    {48}event SMDP_derived_session_key(transID,sharedSecret);
+    {46}let ke: bitstring = kdf_enc(sharedSecret) in
+    {49}let bpp: bitstring = senc(secretProfile,ke) in
+    {42}let ct: kemct = kem_encaps_ct(otPK_euicc_mlkem,kemCoin) in
+    {40}let otPK_dp_ecka: dhpkey = dhpk(otSK_dp_ecka) in
+    {50}let bind_body: bitstring = (transID,otPK_dp_ecka,otPK_euicc_ecka,ct,bpp) in
+    {53}event SMDP_bound_profile(transID,bind_body);
+    {52}let serverSig3: bitstring = sign(bind_body,sk_dppb_1) in
+    {47}let km: bitstring = kdf_mac(sharedSecret) in
+    {51}let bind_mac: bitstring = mac(bind_body,km) in
+    {54}out(ch_tls, (transID,bind_body,bind_mac,serverSig3));
+    {55}in(ch_tls, (=transID,=SUCCESS,resultIccid: iccid,euiccSig3: bitstring))
+) | (
+    {56}!
+    {58}new euiccChallenge_1: nonce;
+    {60}new smdpAddr_1: bitstring;
+    {59}let euiccInfo1_1: nonce = euiccChallenge_1 in
+    {61}out(ch, (euiccChallenge_1,euiccInfo1_1,smdpAddr_1));
+    {62}in(ch, (transID_1: tid,serverSigned1_1: bitstring,serverSig1_1: bitstring,rcv_cert_dpauth: bitstring,ctxParams1_1: bitstring));
+    {63}if (cert_verify(rcv_cert_dpauth,pk_ci) = true) then
+    {64}let pk_dpauth: pkey = cert_extract_pk(rcv_cert_dpauth) in
+    {65}if (verify(serverSigned1_1,serverSig1_1,pk_dpauth) = true) then
+    {66}let (=transID_1,=euiccChallenge_1,serverChallenge_1: nonce,=smdpAddr_1) = serverSigned1_1 in
+    {67}event eUICC_authenticated_server(transID_1,serverSigned1_1);
+    {68}new euiccInfo2_1: bitstring;
+    {69}let euiccSigned1_1: bitstring = (transID_1,serverChallenge_1,euiccInfo2_1,ctxParams1_1) in
+    {71}event eUICC_sent_euiccSigned1(transID_1,euiccSigned1_1);
+    {57}let sk_euicc_1: skey = sk_euicc in
+    {70}let euiccSig1_1: bitstring = sign(euiccSigned1_1,sk_euicc_1) in
+    {15}let cert_eum_c: bitstring = cert(id_eum,pk(sk_eum),sk_ci) in
+    {12}let cert_euicc_c: bitstring = cert(id_euicc,pk(sk_euicc),sk_ci) in
+    {72}out(ch, (euiccSigned1_1,euiccSig1_1,cert_euicc_c,cert_eum_c));
+    {73}in(ch, (=transID_1,smdpSigned2_1: bitstring,smdpSig2_1: bitstring,rcv_cert_dppb: bitstring));
+    {74}if (cert_pb_verify(rcv_cert_dppb,pk_ci) = true) then
+    {75}let pk_dppb: pkey = cert_pb_extract_pk(rcv_cert_dppb) in
+    {76}if (verify(smdpSigned2_1,smdpSig2_1,pk_dppb) = true) then
+    {77}if (smdpSigned2_1 = transID_1) then
+    {78}new otSK_euicc_ecka: dhskey;
+    {80}new otSK_euicc_mlkem: kemsk;
+    {81}let otPK_euicc_mlkem_1: kempk = kem_pk(otSK_euicc_mlkem) in
+    {79}let otPK_euicc_ecka_1: dhpkey = dhpk(otSK_euicc_ecka) in
+    {82}let euiccSigned2_1: bitstring = (transID_1,otPK_euicc_ecka_1,otPK_euicc_mlkem_1) in
+    {83}let euiccSig2_1: bitstring = sign((euiccSigned2_1,smdpSig2_1),sk_euicc_1) in
+    {84}out(ch, (euiccSigned2_1,euiccSig2_1));
+    {85}in(ch, (=transID_1,bind_body_1: bitstring,bind_mac_1: bitstring,serverSig3_1: bitstring));
+    {86}if (verify(bind_body_1,serverSig3_1,pk_dppb) = true) then
+    {87}let (=transID_1,otPK_dp_ecka_1: dhpkey,=otPK_euicc_ecka_1,ct_1: kemct,bpp_1: bitstring) = bind_body_1 in
+    {88}let shS_ecdh_1: bitstring = dh(otSK_euicc_ecka,otPK_dp_ecka_1) in
+    {89}event eUICC_computed_ecdh_component(transID_1,shS_ecdh_1);
+    {90}let shS_mlkem_1: bitstring = kem_decaps(otSK_euicc_mlkem,ct_1) in
+    {91}let sharedSecret_1: bitstring = combine_kdf(shS_ecdh_1,shS_mlkem_1) in
+    {94}event eUICC_derived_session_key(transID_1,sharedSecret_1);
+    {93}let km_1: bitstring = kdf_mac(sharedSecret_1) in
+    {95}if (mac(bind_body_1,km_1) = bind_mac_1) then
+    {92}let ke_1: bitstring = kdf_enc(sharedSecret_1) in
+    {96}let theProfile: bitstring = sdec(bpp_1,ke_1) in
+    {97}event eUICC_installed_profile(transID_1,bind_body_1);
+    {98}new resultIccid_1: iccid;
+    {99}let euiccSig3_1: bitstring = sign((transID_1,SUCCESS,resultIccid_1),sk_euicc_1) in
+    {100}out(ch, (transID_1,SUCCESS,resultIccid_1,euiccSig3_1))
+) | (
+    {101}!
+    {102}in(ch, msg1: bitstring);
+    {103}out(ch_tls, msg1);
+    {104}in(ch_tls, msg2: bitstring);
+    {105}new ctxParams1_2: bitstring;
+    {106}out(ch, (msg2,ctxParams1_2));
+    {107}in(ch, msg3: bitstring);
+    {108}out(ch_tls, msg3);
+    {109}in(ch_tls, msg4: bitstring);
+    {110}out(ch, msg4);
+    {111}in(ch, msg5: bitstring);
+    {112}out(ch_tls, msg5);
+    {113}in(ch_tls, msg6: bitstring);
+    {114}out(ch, msg6);
+    {115}in(ch, msg7: bitstring);
+    {116}out(ch_tls, msg7)
+)
+
+-- Query event(eUICC_authenticated_server(t,m)) ==> event(SMDP_sent_serverSigned1(t,m)) in process 1.
+Translating the process into Horn clauses...
+Completing...
+Termination warning: Selecting an hypothesis matching the conclusion.
+In case of non-termination, try a noselect declaration implying the following one:
+   noselect k:skey, id:bitstring; attacker(cert(id,pk(k),sk_ci[])).
+200 rules inserted. Base: 150 rules (40 with conclusion selected). Queue: 61 rules.
+400 rules inserted. Base: 271 rules (45 with conclusion selected). Queue: 101 rules.
+600 rules inserted. Base: 423 rules (47 with conclusion selected). Queue: 102 rules.
+800 rules inserted. Base: 548 rules (50 with conclusion selected). Queue: 43 rules.
+1000 rules inserted. Base: 669 rules (50 with conclusion selected). Queue: 155 rules.
+1200 rules inserted. Base: 786 rules (50 with conclusion selected). Queue: 91 rules.
+1400 rules inserted. Base: 919 rules (53 with conclusion selected). Queue: 109 rules.
+1600 rules inserted. Base: 1050 rules (54 with conclusion selected). Queue: 46 rules.
+1800 rules inserted. Base: 1140 rules (54 with conclusion selected). Queue: 74 rules.
+2000 rules inserted. Base: 1232 rules (78 with conclusion selected). Queue: 486 rules.
+2200 rules inserted. Base: 1315 rules (78 with conclusion selected). Queue: 421 rules.
+2400 rules inserted. Base: 1491 rules (80 with conclusion selected). Queue: 277 rules.
+2600 rules inserted. Base: 1523 rules (81 with conclusion selected). Queue: 243 rules.
+2800 rules inserted. Base: 1595 rules (81 with conclusion selected). Queue: 177 rules.
+3000 rules inserted. Base: 1601 rules (81 with conclusion selected). Queue: 174 rules.
+3200 rules inserted. Base: 1769 rules (81 with conclusion selected). Queue: 169 rules.
+3400 rules inserted. Base: 1792 rules (81 with conclusion selected). Queue: 132 rules.
+3600 rules inserted. Base: 1786 rules (81 with conclusion selected). Queue: 84 rules.
+3800 rules inserted. Base: 1837 rules (81 with conclusion selected). Queue: 59 rules.
+4000 rules inserted. Base: 1945 rules (93 with conclusion selected). Queue: 48 rules.
+Starting query event(eUICC_authenticated_server(t,m)) ==> event(SMDP_sent_serverSigned1(t,m))
+goal reachable: b-event(SMDP_sent_serverSigned1(transID_2,(transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2))) && attacker(euiccInfo1_2) -> event(eUICC_authenticated_server(transID_2,(transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2)))
+Abbreviations:
+smdpAddr_2 = smdpAddr_1[!1 = @sid]
+euiccChallenge_2 = euiccChallenge_1[!1 = @sid]
+transID_2 = transID[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+serverChallenge_2 = serverChallenge[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+RESULT event(eUICC_authenticated_server(t,m)) ==> event(SMDP_sent_serverSigned1(t,m)) is true.
+-- Query inj-event(eUICC_authenticated_server(t,m)) ==> inj-event(SMDP_sent_serverSigned1(t,m)) in process 1.
+Translating the process into Horn clauses...
+Completing...
+Termination warning: Selecting an hypothesis matching the conclusion.
+In case of non-termination, try a noselect declaration implying the following one:
+   noselect k:skey, id:bitstring; attacker(cert(id,pk(k),sk_ci[])).
+200 rules inserted. Base: 149 rules (40 with conclusion selected). Queue: 63 rules.
+400 rules inserted. Base: 274 rules (41 with conclusion selected). Queue: 30 rules.
+600 rules inserted. Base: 404 rules (47 with conclusion selected). Queue: 148 rules.
+800 rules inserted. Base: 533 rules (47 with conclusion selected). Queue: 55 rules.
+1000 rules inserted. Base: 646 rules (56 with conclusion selected). Queue: 134 rules.
+1200 rules inserted. Base: 768 rules (56 with conclusion selected). Queue: 173 rules.
+1400 rules inserted. Base: 862 rules (56 with conclusion selected). Queue: 108 rules.
+1600 rules inserted. Base: 842 rules (56 with conclusion selected). Queue: 95 rules.
+1800 rules inserted. Base: 913 rules (65 with conclusion selected). Queue: 306 rules.
+2000 rules inserted. Base: 1063 rules (67 with conclusion selected). Queue: 172 rules.
+2200 rules inserted. Base: 1173 rules (68 with conclusion selected). Queue: 76 rules.
+2400 rules inserted. Base: 1217 rules (68 with conclusion selected). Queue: 86 rules.
+2600 rules inserted. Base: 1259 rules (68 with conclusion selected). Queue: 38 rules.
+2800 rules inserted. Base: 1368 rules (93 with conclusion selected). Queue: 312 rules.
+3000 rules inserted. Base: 1437 rules (94 with conclusion selected). Queue: 245 rules.
+3200 rules inserted. Base: 1507 rules (95 with conclusion selected). Queue: 181 rules.
+3400 rules inserted. Base: 1515 rules (95 with conclusion selected). Queue: 174 rules.
+3600 rules inserted. Base: 1578 rules (95 with conclusion selected). Queue: 176 rules.
+3800 rules inserted. Base: 1693 rules (95 with conclusion selected). Queue: 163 rules.
+4000 rules inserted. Base: 1720 rules (95 with conclusion selected). Queue: 120 rules.
+4200 rules inserted. Base: 1714 rules (95 with conclusion selected). Queue: 84 rules.
+4400 rules inserted. Base: 1790 rules (95 with conclusion selected). Queue: 40 rules.
+4600 rules inserted. Base: 1882 rules (107 with conclusion selected). Queue: 48 rules.
+Starting query inj-event(eUICC_authenticated_server(t,m)) ==> inj-event(SMDP_sent_serverSigned1(t,m))
+goal reachable: b-inj-event(SMDP_sent_serverSigned1(transID_2,(transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2)),@occ24_1) && attacker(euiccInfo1_2) && attacker(ctxParams1_3) -> inj-event(eUICC_authenticated_server(transID_2,(transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2)),@occ67_1)
+The 1st hypothesis occurs strictly before the conclusion.
+The 2nd, 3rd hypotheses occur before the conclusion.
+Abbreviations:
+smdpAddr_2 = smdpAddr_1[!1 = @sid]
+euiccChallenge_2 = euiccChallenge_1[!1 = @sid]
+transID_2 = transID[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+serverChallenge_2 = serverChallenge[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+@occ67_1 = @occ67[ctxParams1_1 = ctxParams1_3,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+@occ24_1 = @occ24[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+RESULT inj-event(eUICC_authenticated_server(t,m)) ==> inj-event(SMDP_sent_serverSigned1(t,m)) is true.
+-- Query event(SMDP_authenticated_client(t,m)) ==> event(eUICC_sent_euiccSigned1(t,m)) in process 1.
+Translating the process into Horn clauses...
+Completing...
+Termination warning: Selecting an hypothesis matching the conclusion.
+In case of non-termination, try a noselect declaration implying the following one:
+   noselect k:skey, id:bitstring; attacker(cert(id,pk(k),sk_ci[])).
+200 rules inserted. Base: 151 rules (40 with conclusion selected). Queue: 62 rules.
+400 rules inserted. Base: 267 rules (44 with conclusion selected). Queue: 102 rules.
+600 rules inserted. Base: 414 rules (46 with conclusion selected). Queue: 102 rules.
+800 rules inserted. Base: 544 rules (46 with conclusion selected). Queue: 12 rules.
+1000 rules inserted. Base: 648 rules (50 with conclusion selected). Queue: 74 rules.
+1200 rules inserted. Base: 769 rules (50 with conclusion selected). Queue: 114 rules.
+1400 rules inserted. Base: 900 rules (53 with conclusion selected). Queue: 126 rules.
+1600 rules inserted. Base: 1040 rules (54 with conclusion selected). Queue: 40 rules.
+1800 rules inserted. Base: 1126 rules (54 with conclusion selected). Queue: 78 rules.
+2000 rules inserted. Base: 1238 rules (78 with conclusion selected). Queue: 488 rules.
+2200 rules inserted. Base: 1292 rules (78 with conclusion selected). Queue: 446 rules.
+2400 rules inserted. Base: 1465 rules (80 with conclusion selected). Queue: 308 rules.
+2600 rules inserted. Base: 1523 rules (81 with conclusion selected). Queue: 258 rules.
+2800 rules inserted. Base: 1601 rules (81 with conclusion selected). Queue: 177 rules.
+3000 rules inserted. Base: 1607 rules (81 with conclusion selected). Queue: 174 rules.
+3200 rules inserted. Base: 1748 rules (81 with conclusion selected). Queue: 171 rules.
+3400 rules inserted. Base: 1804 rules (81 with conclusion selected). Queue: 142 rules.
+3600 rules inserted. Base: 1760 rules (81 with conclusion selected). Queue: 102 rules.
+3800 rules inserted. Base: 1783 rules (81 with conclusion selected). Queue: 86 rules.
+4000 rules inserted. Base: 1892 rules (93 with conclusion selected). Queue: 48 rules.
+4200 rules inserted. Base: 1964 rules (93 with conclusion selected). Queue: 12 rules.
+Starting query event(SMDP_authenticated_client(t,m)) ==> event(eUICC_sent_euiccSigned1(t,m))
+goal reachable: b-event(eUICC_sent_euiccSigned1(transID_2,(transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3))) && attacker(ctxParams1_3) && attacker(euiccInfo1_2) -> event(SMDP_authenticated_client(transID_2,(transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3)))
+Abbreviations:
+smdpAddr_2 = smdpAddr_1[!1 = @sid]
+euiccChallenge_2 = euiccChallenge_1[!1 = @sid]
+transID_2 = transID[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+serverChallenge_2 = serverChallenge[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+euiccInfo2_2 = euiccInfo2_1[ctxParams1_1 = ctxParams1_3,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+RESULT event(SMDP_authenticated_client(t,m)) ==> event(eUICC_sent_euiccSigned1(t,m)) is true.
+-- Query inj-event(SMDP_authenticated_client(t,m)) ==> inj-event(eUICC_sent_euiccSigned1(t,m)) in process 1.
+Translating the process into Horn clauses...
+Completing...
+Termination warning: Selecting an hypothesis matching the conclusion.
+In case of non-termination, try a noselect declaration implying the following one:
+   noselect k:skey, id:bitstring; attacker(cert(id,pk(k),sk_ci[])).
+200 rules inserted. Base: 151 rules (40 with conclusion selected). Queue: 62 rules.
+400 rules inserted. Base: 273 rules (44 with conclusion selected). Queue: 104 rules.
+600 rules inserted. Base: 405 rules (46 with conclusion selected). Queue: 130 rules.
+800 rules inserted. Base: 532 rules (46 with conclusion selected). Queue: 41 rules.
+1000 rules inserted. Base: 652 rules (52 with conclusion selected). Queue: 51 rules.
+1200 rules inserted. Base: 757 rules (52 with conclusion selected). Queue: 115 rules.
+1400 rules inserted. Base: 900 rules (55 with conclusion selected). Queue: 150 rules.
+1600 rules inserted. Base: 1041 rules (56 with conclusion selected). Queue: 35 rules.
+1800 rules inserted. Base: 1108 rules (56 with conclusion selected). Queue: 62 rules.
+2000 rules inserted. Base: 1239 rules (56 with conclusion selected). Queue: 29 rules.
+2200 rules inserted. Base: 1271 rules (80 with conclusion selected). Queue: 480 rules.
+2400 rules inserted. Base: 1447 rules (81 with conclusion selected). Queue: 341 rules.
+2600 rules inserted. Base: 1549 rules (83 with conclusion selected). Queue: 258 rules.
+2800 rules inserted. Base: 1628 rules (83 with conclusion selected). Queue: 174 rules.
+3000 rules inserted. Base: 1634 rules (83 with conclusion selected). Queue: 174 rules.
+3200 rules inserted. Base: 1719 rules (83 with conclusion selected). Queue: 173 rules.
+3400 rules inserted. Base: 1822 rules (83 with conclusion selected). Queue: 154 rules.
+3600 rules inserted. Base: 1796 rules (83 with conclusion selected). Queue: 102 rules.
+3800 rules inserted. Base: 1784 rules (83 with conclusion selected). Queue: 102 rules.
+4000 rules inserted. Base: 1901 rules (83 with conclusion selected). Queue: 21 rules.
+4200 rules inserted. Base: 1983 rules (95 with conclusion selected). Queue: 35 rules.
+Starting query inj-event(SMDP_authenticated_client(t,m)) ==> inj-event(eUICC_sent_euiccSigned1(t,m))
+goal reachable: b-inj-event(eUICC_sent_euiccSigned1(transID_2,(transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3)),@occ71_1) && attacker(ctxParams1_3) && attacker(euiccInfo1_2) -> inj-event(SMDP_authenticated_client(transID_2,(transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3)),@occ32_1)
+The 1st hypothesis occurs strictly before the conclusion.
+The 2nd, 3rd hypotheses occur before the conclusion.
+Abbreviations:
+smdpAddr_2 = smdpAddr_1[!1 = @sid]
+euiccChallenge_2 = euiccChallenge_1[!1 = @sid]
+transID_2 = transID[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+serverChallenge_2 = serverChallenge[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+euiccInfo2_2 = euiccInfo2_1[ctxParams1_1 = ctxParams1_3,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+@occ32_1 = @occ32[cert_eum = cert(id_eum[],pk(sk_eum[]),sk_ci[]),cert_euicc = cert(id_euicc[],pk(sk_euicc[]),sk_ci[]),euiccSig1 = sign((transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),sk_euicc[]),euiccSigned1 = (transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+@occ71_1 = @occ71[ctxParams1_1 = ctxParams1_3,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+goal reachable: b-inj-event(eUICC_sent_euiccSigned1(transID_2,(transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3)),@occ71_1) && attacker(ctxParams1_3) && attacker(euiccInfo1_2) -> inj-event(SMDP_authenticated_client(transID_2,(transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3)),@occ32_1)
+The 1st hypothesis occurs strictly before the conclusion.
+The 2nd, 3rd hypotheses occur before the conclusion.
+Abbreviations:
+smdpAddr_2 = smdpAddr_1[!1 = @sid]
+euiccChallenge_2 = euiccChallenge_1[!1 = @sid]
+transID_2 = transID[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+serverChallenge_2 = serverChallenge[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+euiccInfo2_2 = euiccInfo2_1[ctxParams1_1 = ctxParams1_3,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+@occ32_1 = @occ32[cert_eum = cert(id_euicc[],pk(sk_euicc[]),sk_ci[]),cert_euicc = cert(id_euicc[],pk(sk_euicc[]),sk_ci[]),euiccSig1 = sign((transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),sk_euicc[]),euiccSigned1 = (transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+@occ71_1 = @occ71[ctxParams1_1 = ctxParams1_3,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+goal reachable: b-inj-event(eUICC_sent_euiccSigned1(transID_2,(transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3)),@occ71_1) && attacker(ctxParams1_3) && attacker(euiccInfo1_2) -> inj-event(SMDP_authenticated_client(transID_2,(transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3)),@occ32_1)
+The 1st hypothesis occurs strictly before the conclusion.
+The 2nd, 3rd hypotheses occur before the conclusion.
+Abbreviations:
+smdpAddr_2 = smdpAddr_1[!1 = @sid]
+euiccChallenge_2 = euiccChallenge_1[!1 = @sid]
+transID_2 = transID[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+serverChallenge_2 = serverChallenge[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+euiccInfo2_2 = euiccInfo2_1[ctxParams1_1 = ctxParams1_3,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+@occ32_1 = @occ32[cert_eum = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),cert_euicc = cert(id_euicc[],pk(sk_euicc[]),sk_ci[]),euiccSig1 = sign((transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),sk_euicc[]),euiccSigned1 = (transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+@occ71_1 = @occ71[ctxParams1_1 = ctxParams1_3,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+RESULT inj-event(SMDP_authenticated_client(t,m)) ==> inj-event(eUICC_sent_euiccSigned1(t,m)) is true.
+-- Query not (event(eUICC_derived_session_key(t,k)) && attacker(k)) in process 1.
+Translating the process into Horn clauses...
+Completing...
+Termination warning: Selecting an hypothesis matching the conclusion.
+In case of non-termination, try a noselect declaration implying the following one:
+   noselect k:skey, id:bitstring; attacker(cert(id,pk(k),sk_ci[])).
+200 rules inserted. Base: 155 rules (40 with conclusion selected). Queue: 58 rules.
+400 rules inserted. Base: 271 rules (44 with conclusion selected). Queue: 99 rules.
+600 rules inserted. Base: 426 rules (46 with conclusion selected). Queue: 100 rules.
+800 rules inserted. Base: 541 rules (48 with conclusion selected). Queue: 31 rules.
+1000 rules inserted. Base: 663 rules (49 with conclusion selected). Queue: 146 rules.
+1200 rules inserted. Base: 774 rules (49 with conclusion selected). Queue: 97 rules.
+1400 rules inserted. Base: 902 rules (52 with conclusion selected). Queue: 120 rules.
+1600 rules inserted. Base: 1036 rules (53 with conclusion selected). Queue: 44 rules.
+1800 rules inserted. Base: 1112 rules (53 with conclusion selected). Queue: 86 rules.
+2000 rules inserted. Base: 1234 rules (77 with conclusion selected). Queue: 522 rules.
+2200 rules inserted. Base: 1266 rules (77 with conclusion selected). Queue: 484 rules.
+2400 rules inserted. Base: 1442 rules (79 with conclusion selected). Queue: 340 rules.
+2600 rules inserted. Base: 1521 rules (80 with conclusion selected). Queue: 276 rules.
+2800 rules inserted. Base: 1600 rules (80 with conclusion selected). Queue: 192 rules.
+3000 rules inserted. Base: 1606 rules (80 with conclusion selected). Queue: 192 rules.
+3200 rules inserted. Base: 1658 rules (80 with conclusion selected). Queue: 192 rules.
+3400 rules inserted. Base: 1786 rules (80 with conclusion selected). Queue: 180 rules.
+3600 rules inserted. Base: 1786 rules (80 with conclusion selected). Queue: 141 rules.
+3800 rules inserted. Base: 1756 rules (80 with conclusion selected). Queue: 120 rules.
+4000 rules inserted. Base: 1805 rules (80 with conclusion selected). Queue: 99 rules.
+4200 rules inserted. Base: 1915 rules (92 with conclusion selected). Queue: 12 rules.
+4400 rules inserted. Base: 2005 rules (104 with conclusion selected). Queue: 18 rules.
+Starting query not (event(eUICC_derived_session_key(t,k)) && attacker(k))
+RESULT not (event(eUICC_derived_session_key(t,k)) && attacker(k)) is true.
+-- Query not attacker(secretProfile[]) in process 1.
+Translating the process into Horn clauses...
+Completing...
+Termination warning: Selecting an hypothesis matching the conclusion.
+In case of non-termination, try a noselect declaration implying the following one:
+   noselect k:skey, id:bitstring; attacker(cert(id,pk(k),sk_ci[])).
+200 rules inserted. Base: 155 rules (40 with conclusion selected). Queue: 62 rules.
+400 rules inserted. Base: 265 rules (44 with conclusion selected). Queue: 109 rules.
+600 rules inserted. Base: 416 rules (46 with conclusion selected). Queue: 96 rules.
+800 rules inserted. Base: 532 rules (49 with conclusion selected). Queue: 46 rules.
+1000 rules inserted. Base: 637 rules (49 with conclusion selected). Queue: 155 rules.
+1200 rules inserted. Base: 774 rules (49 with conclusion selected). Queue: 81 rules.
+1400 rules inserted. Base: 902 rules (52 with conclusion selected). Queue: 106 rules.
+1600 rules inserted. Base: 1030 rules (53 with conclusion selected). Queue: 48 rules.
+1800 rules inserted. Base: 1122 rules (53 with conclusion selected). Queue: 70 rules.
+2000 rules inserted. Base: 1210 rules (77 with conclusion selected). Queue: 486 rules.
+2200 rules inserted. Base: 1300 rules (77 with conclusion selected). Queue: 414 rules.
+2400 rules inserted. Base: 1476 rules (79 with conclusion selected). Queue: 270 rules.
+2600 rules inserted. Base: 1508 rules (80 with conclusion selected). Queue: 236 rules.
+2800 rules inserted. Base: 1573 rules (80 with conclusion selected). Queue: 177 rules.
+3000 rules inserted. Base: 1579 rules (80 with conclusion selected). Queue: 174 rules.
+3200 rules inserted. Base: 1753 rules (80 with conclusion selected). Queue: 165 rules.
+3400 rules inserted. Base: 1762 rules (80 with conclusion selected). Queue: 130 rules.
+3600 rules inserted. Base: 1726 rules (80 with conclusion selected). Queue: 102 rules.
+3800 rules inserted. Base: 1780 rules (80 with conclusion selected). Queue: 72 rules.
+4000 rules inserted. Base: 1876 rules (92 with conclusion selected). Queue: 48 rules.
+4200 rules inserted. Base: 1956 rules (92 with conclusion selected). Queue: 4 rules.
+Starting query not attacker(secretProfile[])
+RESULT not attacker(secretProfile[]) is true.
+-- Query event(eUICC_installed_profile(t,bb)) ==> event(SMDP_bound_profile(t,bb)) in process 1.
+Translating the process into Horn clauses...
+Completing...
+Termination warning: Selecting an hypothesis matching the conclusion.
+In case of non-termination, try a noselect declaration implying the following one:
+   noselect k:skey, id:bitstring; attacker(cert(id,pk(k),sk_ci[])).
+200 rules inserted. Base: 155 rules (40 with conclusion selected). Queue: 61 rules.
+400 rules inserted. Base: 282 rules (40 with conclusion selected). Queue: 40 rules.
+600 rules inserted. Base: 432 rules (46 with conclusion selected). Queue: 144 rules.
+800 rules inserted. Base: 584 rules (46 with conclusion selected). Queue: 36 rules.
+1000 rules inserted. Base: 691 rules (49 with conclusion selected). Queue: 53 rules.
+1200 rules inserted. Base: 788 rules (49 with conclusion selected). Queue: 155 rules.
+1400 rules inserted. Base: 944 rules (49 with conclusion selected). Queue: 83 rules.
+1600 rules inserted. Base: 1074 rules (52 with conclusion selected). Queue: 140 rules.
+1800 rules inserted. Base: 1216 rules (53 with conclusion selected). Queue: 43 rules.
+2000 rules inserted. Base: 1277 rules (53 with conclusion selected). Queue: 83 rules.
+2200 rules inserted. Base: 1413 rules (53 with conclusion selected). Queue: 55 rules.
+2400 rules inserted. Base: 1504 rules (83 with conclusion selected). Queue: 989 rules.
+2600 rules inserted. Base: 1672 rules (84 with conclusion selected). Queue: 859 rules.
+2800 rules inserted. Base: 1833 rules (86 with conclusion selected). Queue: 723 rules.
+3000 rules inserted. Base: 1950 rules (86 with conclusion selected). Queue: 628 rules.
+3200 rules inserted. Base: 2122 rules (88 with conclusion selected). Queue: 496 rules.
+3400 rules inserted. Base: 2228 rules (89 with conclusion selected). Queue: 394 rules.
+3600 rules inserted. Base: 2320 rules (89 with conclusion selected). Queue: 296 rules.
+3800 rules inserted. Base: 2415 rules (89 with conclusion selected). Queue: 207 rules.
+4000 rules inserted. Base: 2423 rules (89 with conclusion selected). Queue: 210 rules.
+4200 rules inserted. Base: 2520 rules (89 with conclusion selected). Queue: 210 rules.
+4400 rules inserted. Base: 2646 rules (89 with conclusion selected). Queue: 192 rules.
+4600 rules inserted. Base: 2673 rules (89 with conclusion selected). Queue: 126 rules.
+4800 rules inserted. Base: 2640 rules (89 with conclusion selected). Queue: 108 rules.
+5000 rules inserted. Base: 2694 rules (89 with conclusion selected). Queue: 78 rules.
+5200 rules inserted. Base: 2784 rules (107 with conclusion selected). Queue: 48 rules.
+5400 rules inserted. Base: 2857 rules (107 with conclusion selected). Queue: 23 rules.
+Starting query event(eUICC_installed_profile(t,bb)) ==> event(SMDP_bound_profile(t,bb))
+goal reachable: b-event(SMDP_bound_profile(transID_2,(transID_2,dhpk(otSK_dp_ecka_1),dhpk(otSK_euicc_ecka_1),kem_encaps_ct(kem_pk(otSK_euicc_mlkem_1),kemCoin_1),senc(secretProfile[],kdf_enc(combine_kdf(dh(otSK_dp_ecka_1,dhpk(otSK_euicc_ecka_1)),kem_encaps_ss(kem_pk(otSK_euicc_mlkem_1),kemCoin_1))))))) && attacker(ctxParams1_3) && attacker(euiccInfo1_2) && attacker(ctxParams1_4) -> event(eUICC_installed_profile(transID_2,(transID_2,dhpk(otSK_dp_ecka_1),dhpk(otSK_euicc_ecka_1),kem_encaps_ct(kem_pk(otSK_euicc_mlkem_1),kemCoin_1),senc(secretProfile[],kdf_enc(combine_kdf(dh(otSK_dp_ecka_1,dhpk(otSK_euicc_ecka_1)),kem_encaps_ss(kem_pk(otSK_euicc_mlkem_1),kemCoin_1)))))))
+Abbreviations:
+smdpAddr_2 = smdpAddr_1[!1 = @sid]
+euiccChallenge_2 = euiccChallenge_1[!1 = @sid]
+transID_2 = transID[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+serverChallenge_2 = serverChallenge[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+otSK_euicc_ecka_1 = otSK_euicc_ecka[rcv_cert_dppb = cert_pb(id_dppb[],pk(sk_dppb[]),sk_ci[]),smdpSig2_1 = sign(transID_2,sk_dppb[]),smdpSigned2_1 = transID_2,ctxParams1_1 = ctxParams1_4,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+otSK_euicc_mlkem_1 = otSK_euicc_mlkem[rcv_cert_dppb = cert_pb(id_dppb[],pk(sk_dppb[]),sk_ci[]),smdpSig2_1 = sign(transID_2,sk_dppb[]),smdpSigned2_1 = transID_2,ctxParams1_1 = ctxParams1_4,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+euiccInfo2_2 = euiccInfo2_1[ctxParams1_1 = ctxParams1_3,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+otSK_dp_ecka_1 = otSK_dp_ecka[euiccSig2 = sign(((transID_2,dhpk(otSK_euicc_ecka_1),kem_pk(otSK_euicc_mlkem_1)),sign(transID_2,sk_dppb[])),sk_euicc[]),euiccSigned2 = (transID_2,dhpk(otSK_euicc_ecka_1),kem_pk(otSK_euicc_mlkem_1)),cert_eum = cert(id_eum[],pk(sk_eum[]),sk_ci[]),cert_euicc = cert(id_euicc[],pk(sk_euicc[]),sk_ci[]),euiccSig1 = sign((transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),sk_euicc[]),euiccSigned1 = (transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+kemCoin_1 = kemCoin[euiccSig2 = sign(((transID_2,dhpk(otSK_euicc_ecka_1),kem_pk(otSK_euicc_mlkem_1)),sign(transID_2,sk_dppb[])),sk_euicc[]),euiccSigned2 = (transID_2,dhpk(otSK_euicc_ecka_1),kem_pk(otSK_euicc_mlkem_1)),cert_eum = cert(id_eum[],pk(sk_eum[]),sk_ci[]),cert_euicc = cert(id_euicc[],pk(sk_euicc[]),sk_ci[]),euiccSig1 = sign((transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),sk_euicc[]),euiccSigned1 = (transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+goal reachable: b-event(SMDP_bound_profile(transID_2,(transID_2,dhpk(otSK_dp_ecka_1),dhpk(otSK_euicc_ecka_1),kem_encaps_ct(kem_pk(otSK_euicc_mlkem_1),kemCoin_1),senc(secretProfile[],kdf_enc(combine_kdf(dh(otSK_dp_ecka_1,dhpk(otSK_euicc_ecka_1)),kem_encaps_ss(kem_pk(otSK_euicc_mlkem_1),kemCoin_1))))))) && attacker(ctxParams1_3) && attacker(euiccInfo1_2) && attacker(ctxParams1_4) -> event(eUICC_installed_profile(transID_2,(transID_2,dhpk(otSK_dp_ecka_1),dhpk(otSK_euicc_ecka_1),kem_encaps_ct(kem_pk(otSK_euicc_mlkem_1),kemCoin_1),senc(secretProfile[],kdf_enc(combine_kdf(dh(otSK_dp_ecka_1,dhpk(otSK_euicc_ecka_1)),kem_encaps_ss(kem_pk(otSK_euicc_mlkem_1),kemCoin_1)))))))
+Abbreviations:
+smdpAddr_2 = smdpAddr_1[!1 = @sid]
+euiccChallenge_2 = euiccChallenge_1[!1 = @sid]
+transID_2 = transID[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+serverChallenge_2 = serverChallenge[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+otSK_euicc_ecka_1 = otSK_euicc_ecka[rcv_cert_dppb = cert_pb(id_dppb[],pk(sk_dppb[]),sk_ci[]),smdpSig2_1 = sign(transID_2,sk_dppb[]),smdpSigned2_1 = transID_2,ctxParams1_1 = ctxParams1_4,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+otSK_euicc_mlkem_1 = otSK_euicc_mlkem[rcv_cert_dppb = cert_pb(id_dppb[],pk(sk_dppb[]),sk_ci[]),smdpSig2_1 = sign(transID_2,sk_dppb[]),smdpSigned2_1 = transID_2,ctxParams1_1 = ctxParams1_4,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+euiccInfo2_2 = euiccInfo2_1[ctxParams1_1 = ctxParams1_3,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+otSK_dp_ecka_1 = otSK_dp_ecka[euiccSig2 = sign(((transID_2,dhpk(otSK_euicc_ecka_1),kem_pk(otSK_euicc_mlkem_1)),sign(transID_2,sk_dppb[])),sk_euicc[]),euiccSigned2 = (transID_2,dhpk(otSK_euicc_ecka_1),kem_pk(otSK_euicc_mlkem_1)),cert_eum = cert(id_euicc[],pk(sk_euicc[]),sk_ci[]),cert_euicc = cert(id_euicc[],pk(sk_euicc[]),sk_ci[]),euiccSig1 = sign((transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),sk_euicc[]),euiccSigned1 = (transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+kemCoin_1 = kemCoin[euiccSig2 = sign(((transID_2,dhpk(otSK_euicc_ecka_1),kem_pk(otSK_euicc_mlkem_1)),sign(transID_2,sk_dppb[])),sk_euicc[]),euiccSigned2 = (transID_2,dhpk(otSK_euicc_ecka_1),kem_pk(otSK_euicc_mlkem_1)),cert_eum = cert(id_euicc[],pk(sk_euicc[]),sk_ci[]),cert_euicc = cert(id_euicc[],pk(sk_euicc[]),sk_ci[]),euiccSig1 = sign((transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),sk_euicc[]),euiccSigned1 = (transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+goal reachable: b-event(SMDP_bound_profile(transID_2,(transID_2,dhpk(otSK_dp_ecka_1),dhpk(otSK_euicc_ecka_1),kem_encaps_ct(kem_pk(otSK_euicc_mlkem_1),kemCoin_1),senc(secretProfile[],kdf_enc(combine_kdf(dh(otSK_dp_ecka_1,dhpk(otSK_euicc_ecka_1)),kem_encaps_ss(kem_pk(otSK_euicc_mlkem_1),kemCoin_1))))))) && attacker(ctxParams1_3) && attacker(euiccInfo1_2) && attacker(ctxParams1_4) -> event(eUICC_installed_profile(transID_2,(transID_2,dhpk(otSK_dp_ecka_1),dhpk(otSK_euicc_ecka_1),kem_encaps_ct(kem_pk(otSK_euicc_mlkem_1),kemCoin_1),senc(secretProfile[],kdf_enc(combine_kdf(dh(otSK_dp_ecka_1,dhpk(otSK_euicc_ecka_1)),kem_encaps_ss(kem_pk(otSK_euicc_mlkem_1),kemCoin_1)))))))
+Abbreviations:
+smdpAddr_2 = smdpAddr_1[!1 = @sid]
+euiccChallenge_2 = euiccChallenge_1[!1 = @sid]
+transID_2 = transID[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+serverChallenge_2 = serverChallenge[smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+otSK_euicc_ecka_1 = otSK_euicc_ecka[rcv_cert_dppb = cert_pb(id_dppb[],pk(sk_dppb[]),sk_ci[]),smdpSig2_1 = sign(transID_2,sk_dppb[]),smdpSigned2_1 = transID_2,ctxParams1_1 = ctxParams1_4,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+otSK_euicc_mlkem_1 = otSK_euicc_mlkem[rcv_cert_dppb = cert_pb(id_dppb[],pk(sk_dppb[]),sk_ci[]),smdpSig2_1 = sign(transID_2,sk_dppb[]),smdpSigned2_1 = transID_2,ctxParams1_1 = ctxParams1_4,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+euiccInfo2_2 = euiccInfo2_1[ctxParams1_1 = ctxParams1_3,rcv_cert_dpauth = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),serverSig1_1 = sign((transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),sk_dpauth[]),serverSigned1_1 = (transID_2,euiccChallenge_2,serverChallenge_2,smdpAddr_2),transID_1 = transID_2,!1 = @sid]
+otSK_dp_ecka_1 = otSK_dp_ecka[euiccSig2 = sign(((transID_2,dhpk(otSK_euicc_ecka_1),kem_pk(otSK_euicc_mlkem_1)),sign(transID_2,sk_dppb[])),sk_euicc[]),euiccSigned2 = (transID_2,dhpk(otSK_euicc_ecka_1),kem_pk(otSK_euicc_mlkem_1)),cert_eum = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),cert_euicc = cert(id_euicc[],pk(sk_euicc[]),sk_ci[]),euiccSig1 = sign((transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),sk_euicc[]),euiccSigned1 = (transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+kemCoin_1 = kemCoin[euiccSig2 = sign(((transID_2,dhpk(otSK_euicc_ecka_1),kem_pk(otSK_euicc_mlkem_1)),sign(transID_2,sk_dppb[])),sk_euicc[]),euiccSigned2 = (transID_2,dhpk(otSK_euicc_ecka_1),kem_pk(otSK_euicc_mlkem_1)),cert_eum = cert(id_dpauth[],pk(sk_dpauth[]),sk_ci[]),cert_euicc = cert(id_euicc[],pk(sk_euicc[]),sk_ci[]),euiccSig1 = sign((transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),sk_euicc[]),euiccSigned1 = (transID_2,serverChallenge_2,euiccInfo2_2,ctxParams1_3),smdpAddr = smdpAddr_2,euiccInfo1 = euiccInfo1_2,euiccChallenge = euiccChallenge_2,!1 = @sid_1]
+RESULT event(eUICC_installed_profile(t,bb)) ==> event(SMDP_bound_profile(t,bb)) is true.
+-- Query not (event(eUICC_computed_ecdh_component(t,ss)) && attacker(ss)) in process 1.
+Translating the process into Horn clauses...
+Completing...
+Termination warning: Selecting an hypothesis matching the conclusion.
+In case of non-termination, try a noselect declaration implying the following one:
+   noselect k:skey, id:bitstring; attacker(cert(id,pk(k),sk_ci[])).
+200 rules inserted. Base: 155 rules (40 with conclusion selected). Queue: 62 rules.
+400 rules inserted. Base: 267 rules (44 with conclusion selected). Queue: 97 rules.
+600 rules inserted. Base: 417 rules (46 with conclusion selected). Queue: 101 rules.
+800 rules inserted. Base: 538 rules (49 with conclusion selected). Queue: 46 rules.
+1000 rules inserted. Base: 649 rules (49 with conclusion selected). Queue: 155 rules.
+1200 rules inserted. Base: 774 rules (49 with conclusion selected). Queue: 87 rules.
+1400 rules inserted. Base: 902 rules (52 with conclusion selected). Queue: 112 rules.
+1600 rules inserted. Base: 1032 rules (53 with conclusion selected). Queue: 46 rules.
+1800 rules inserted. Base: 1116 rules (53 with conclusion selected). Queue: 78 rules.
+2000 rules inserted. Base: 1220 rules (77 with conclusion selected). Queue: 499 rules.
+2200 rules inserted. Base: 1282 rules (77 with conclusion selected). Queue: 451 rules.
+2400 rules inserted. Base: 1458 rules (79 with conclusion selected). Queue: 307 rules.
+2600 rules inserted. Base: 1508 rules (80 with conclusion selected). Queue: 264 rules.
+2800 rules inserted. Base: 1586 rules (80 with conclusion selected). Queue: 183 rules.
+3000 rules inserted. Base: 1592 rules (80 with conclusion selected). Queue: 180 rules.
+3200 rules inserted. Base: 1718 rules (80 with conclusion selected). Queue: 177 rules.
+3400 rules inserted. Base: 1781 rules (80 with conclusion selected). Queue: 156 rules.
+3600 rules inserted. Base: 1749 rules (80 with conclusion selected). Queue: 108 rules.
+3800 rules inserted. Base: 1748 rules (80 with conclusion selected). Queue: 103 rules.
+4000 rules inserted. Base: 1858 rules (80 with conclusion selected). Queue: 25 rules.
+4200 rules inserted. Base: 1942 rules (98 with conclusion selected). Queue: 37 rules.
+Starting query not (event(eUICC_computed_ecdh_component(t,ss)) && attacker(ss))
+RESULT not (event(eUICC_computed_ecdh_component(t,ss)) && attacker(ss)) is true.
+
+--------------------------------------------------------------
+Verification summary:
+
+Query event(eUICC_authenticated_server(t,m)) ==> event(SMDP_sent_serverSigned1(t,m)) is true.
+
+Query inj-event(eUICC_authenticated_server(t,m)) ==> inj-event(SMDP_sent_serverSigned1(t,m)) is true.
+
+Query event(SMDP_authenticated_client(t,m)) ==> event(eUICC_sent_euiccSigned1(t,m)) is true.
+
+Query inj-event(SMDP_authenticated_client(t,m)) ==> inj-event(eUICC_sent_euiccSigned1(t,m)) is true.
+
+Query not (event(eUICC_derived_session_key(t,k)) && attacker(k)) is true.
+
+Query not attacker(secretProfile[]) is true.
+
+Query event(eUICC_installed_profile(t,bb)) ==> event(SMDP_bound_profile(t,bb)) is true.
+
+Query not (event(eUICC_computed_ecdh_component(t,ss)) && attacker(ss)) is true.
+
+--------------------------------------------------------------
+

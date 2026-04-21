@@ -1,0 +1,61 @@
+{
+  "config": "b",
+  "description": "PQ-TLS transport only — ECDSA auth + ECDH key exchange + PQ-TLS transport",
+  "proverif_version": "2.05",
+  "model_file": "option_b.pv",
+  "scenarios": {
+    "oracle": {
+      "description": "Dolev-Yao attacker with break_dh quantum oracle",
+      "quantum_oracle": "break_dh equation active",
+      "channel_model": "Both ch and ch_tls are public — attacker has full Dolev-Yao control over all channels",
+      "queries": {
+        "Q1_server_auth_agreement": true,
+        "Q2_server_auth_injective": true,
+        "Q3_client_auth_agreement": true,
+        "Q4_client_auth_injective": true,
+        "Q5_session_key_secrecy": false,
+        "Q6_bpp_confidentiality": false,
+        "Q7_binding_integrity": true,
+        "Q8_forward_secrecy": true
+      },
+      "oracle_analysis": {
+        "oracle_fired": true,
+        "oracle_fired_on": "break_dh(dhpk(otSK_euicc_ecka), dhpk(otSK_dp_ecka)) = dh(otSK_dp_ecka, dhpk(otSK_euicc_ecka))",
+        "oracle_blocked_by": null,
+        "interpretation": "HNDL-vulnerable: PQ-TLS protects transport but ECDH keys appear on public APDU channel. Attacker applies break_dh to recover ShS"
+      },
+      "attack_traces": {
+        "Q5": "Same as option (a) — break_dh on public ECDH keys recovers ShS",
+        "Q6": "Same as option (a) — ShS recovery enables BPP decryption"
+      },
+      "raw_output_sha256": "30707064339b6c816dfc5d7dede39a07efd30eba25d3e6aca739d6902a4f8855"
+    },
+    "classical": {
+      "description": "Dolev-Yao attacker, no quantum capability",
+      "queries": {
+        "Q1_server_auth_agreement": true,
+        "Q2_server_auth_injective": true,
+        "Q3_client_auth_agreement": true,
+        "Q4_client_auth_injective": true,
+        "Q5_session_key_secrecy": true,
+        "Q6_bpp_confidentiality": true,
+        "Q7_binding_integrity": true
+      },
+      "raw_output_sha256": "667d570b"
+    },
+    "pfs": {
+      "description": "Phase-separated PFS test: single session, signing keys revealed in phase 1, no break_dh",
+      "queries": {
+        "Q1_server_auth_agreement": true,
+        "Q2_server_auth_injective": true,
+        "Q3_client_auth_agreement": true,
+        "Q4_client_auth_injective": true,
+        "Q5_session_key_secrecy": true,
+        "Q6_bpp_confidentiality": true,
+        "Q7_binding_integrity": true
+      },
+      "raw_output_sha256": "85f6d099"
+    }
+  },
+  "timestamp": "2026-04-19T01:50:00Z"
+}

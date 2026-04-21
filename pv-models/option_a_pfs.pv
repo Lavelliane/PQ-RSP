@@ -1,11 +1,11 @@
 (* ============================================================
-   SGP.22 Consumer RSP — Option (b): PQ-TLS Transport
-   ECDSA authentication + ECDH key exchange + PQ-TLS transport
+   SGP.22 Consumer RSP — Option (a): Classical Baseline
+   PFS Test: no break_dh, single session, phase 1 key reveal
    ============================================================ *)
 
 (* --- Channels --- *)
 free ch: channel.          (* public channel (LPA relay, attacker-visible) *)
-free ch_tls: channel.  (* PQ-TLS channel (LPA ↔ SM-DP+) *)
+free ch_tls: channel.  (* TLS 1.3 channel (LPA ↔ SM-DP+) *)
 
 (* --- Types --- *)
 type skey.      (* ECDSA signing key *)
@@ -35,11 +35,6 @@ fun dhpk(dhskey): dhpkey.
 fun dh(dhskey, dhpkey): bitstring.
 equation forall a: dhskey, b: dhskey;
   dh(a, dhpk(b)) = dh(b, dhpk(a)).
-
-(* --- Quantum oracle: break_dh(pkA, pkB) → shS --- *)
-fun break_dh(dhpkey, dhpkey): bitstring.
-equation forall a: dhskey, b: dhskey;
-  break_dh(dhpk(a), dhpk(b)) = dh(a, dhpk(b)).
 
 (* --- Symmetric encryption --- *)
 fun senc(bitstring, bitstring): bitstring.
@@ -362,7 +357,10 @@ process
   let cert_eum_c = cert(id_eum, pk_eum, sk_ci) in
 
   (
-    (!SMDP(sk_dpauth, sk_dppb, cert_dpauth, cert_dppb, pk_ci)) |
-    (!eUICC(sk_euicc, cert_euicc_c, cert_eum_c, pk_ci)) |
-    (!LPA)
-  )
+    (SMDP(sk_dpauth, sk_dppb, cert_dpauth, cert_dppb, pk_ci)) |
+    (eUICC(sk_euicc, cert_euicc_c, cert_eum_c, pk_ci)) |
+    (LPA)
+  ) |
+  (phase 1; out(ch, sk_dpauth)) |
+  (phase 1; out(ch, sk_dppb)) |
+  (phase 1; out(ch, sk_euicc))

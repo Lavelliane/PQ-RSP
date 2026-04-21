@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 910" width="840" height="910">
+<rect width="840" height="910" fill="#ffffff"/>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2d3748"/></marker>
+<marker id="arrow-atk" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#e53e3e"/></marker>
+</defs>
+<text x="420" y="22" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#1a202c">Full PQC — Option (d)</text>
+<text x="420" y="40" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" fill="#718096">No ECDH in protocol; break_dh oracle inapplicable; Q5 TRUE, Q6 TRUE</text>
+<rect x="100" y="54" width="120" height="40" rx="6" fill="#f0f4f8" stroke="#4a5568" stroke-width="1.5"/>
+<text x="160" y="79" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1a202c">eUICC</text>
+<rect x="360" y="54" width="120" height="40" rx="6" fill="#fff5f5" stroke="#e53e3e" stroke-width="1.5"/>
+<text x="420" y="79" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#c53030">Attacker</text>
+<rect x="620" y="54" width="120" height="40" rx="6" fill="#f0f4f8" stroke="#4a5568" stroke-width="1.5"/>
+<text x="680" y="79" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1a202c">SM-DP+</text>
+<line x1="160" y1="94" x2="160" y2="834" stroke="#cbd5e0" stroke-width="1" stroke-dasharray="6,3"/>
+<line x1="420" y1="94" x2="420" y2="834" stroke="#e53e3e" stroke-width="1" stroke-dasharray="4,4"/>
+<line x1="680" y1="94" x2="680" y2="834" stroke="#cbd5e0" stroke-width="1" stroke-dasharray="6,3"/>
+<line x1="20" y1="114" x2="820" y2="114" stroke="#718096" stroke-width="0.5" stroke-dasharray="3,3"/>
+<text x="420" y="129" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-style="italic" fill="#718096">Phase 1 — Mutual Authentication (ML-DSA)</text>
+<line x1="164" y1="166" x2="676" y2="166" stroke="#2d3748" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrow)"/>
+<text x="420" y="160" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#1a202c">serverSigned1, euiccSigned1 (ML-DSA sigs)</text>
+<rect x="72" y="200" width="176" height="28" rx="4" fill="#f0fff4" stroke="#38a169" stroke-width="1"/>
+<text x="160" y="219" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#276749">Auth verified (Q1-Q4 TRUE)</text>
+<line x1="20" y1="258" x2="820" y2="258" stroke="#718096" stroke-width="0.5" stroke-dasharray="3,3"/>
+<text x="420" y="273" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-style="italic" fill="#718096">Phase 2 — ML-KEM Key Exchange</text>
+<rect x="33" y="296" width="254" height="28" rx="4" fill="#f0f4f8" stroke="#4a5568" stroke-width="1"/>
+<text x="160" y="315" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#1a202c">ML-KEM.KeyGen: (otSK.MLKEM, otPK.MLKEM)</text>
+<line x1="164" y1="358" x2="676" y2="358" stroke="#2d3748" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="420" y="352" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#1a202c">euiccSigned2 = (tid, otPK.MLKEM)</text>
+<rect x="340" y="392" width="160" height="28" rx="4" fill="#fffff0" stroke="#d69e2e" stroke-width="1"/>
+<text x="420" y="411" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#744210">Records otPK.MLKEM</text>
+<rect x="559" y="440" width="242" height="28" rx="4" fill="#f0f4f8" stroke="#4a5568" stroke-width="1"/>
+<text x="680" y="459" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#1a202c">(ct, ShS) = ML-KEM.Encaps(otPK.MLKEM)</text>
+<line x1="676" y1="502" x2="164" y2="502" stroke="#2d3748" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="420" y="496" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#1a202c">bind_body = (tid, ct, BPP)</text>
+<rect x="340" y="536" width="160" height="28" rx="4" fill="#fffff0" stroke="#d69e2e" stroke-width="1"/>
+<text x="420" y="555" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#744210">Records ct, BPP</text>
+<line x1="20" y1="594" x2="820" y2="594" stroke="#718096" stroke-width="0.5" stroke-dasharray="3,3"/>
+<text x="420" y="609" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-style="italic" fill="#718096">Oracle inapplicable</text>
+<rect x="308" y="632" width="224" height="28" rx="4" fill="#fffff0" stroke="#d69e2e" stroke-width="1"/>
+<text x="420" y="651" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#744210">break_dh: no ECDH keys in protocol</text>
+<rect x="302" y="680" width="236" height="28" rx="4" fill="#fffff0" stroke="#d69e2e" stroke-width="1"/>
+<text x="420" y="699" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#744210">ML-KEM: no break_kem equation exists</text>
+<rect x="332" y="728" width="176" height="28" rx="4" fill="#f0fff4" stroke="#38a169" stroke-width="1"/>
+<text x="420" y="747" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#276749">Q5 TRUE: ShS unrecoverable</text>
+<rect x="317" y="776" width="206" height="28" rx="4" fill="#f0fff4" stroke="#38a169" stroke-width="1"/>
+<text x="420" y="795" text-anchor="middle" font-family="Consolas, 'Source Code Pro', monospace" font-size="10" fill="#276749">Q6 TRUE: profile remains secret</text>
+<text x="420" y="898" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" fill="#718096">Pure ML-KEM — quantum oracle has no applicable terms</text>
+</svg>

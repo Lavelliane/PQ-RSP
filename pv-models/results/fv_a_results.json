@@ -1,0 +1,61 @@
+{
+  "config": "a",
+  "description": "Classical baseline — ECDSA auth + ECDH key exchange + TLS 1.3 transport",
+  "proverif_version": "2.05",
+  "model_file": "option_a.pv",
+  "scenarios": {
+    "oracle": {
+      "description": "Dolev-Yao attacker with break_dh quantum oracle",
+      "quantum_oracle": "break_dh equation active",
+      "channel_model": "Both ch and ch_tls are public — attacker has full Dolev-Yao control over all channels",
+      "queries": {
+        "Q1_server_auth_agreement": true,
+        "Q2_server_auth_injective": true,
+        "Q3_client_auth_agreement": true,
+        "Q4_client_auth_injective": true,
+        "Q5_session_key_secrecy": false,
+        "Q6_bpp_confidentiality": false,
+        "Q7_binding_integrity": true,
+        "Q8_forward_secrecy": true
+      },
+      "oracle_analysis": {
+        "oracle_fired": true,
+        "oracle_fired_on": "break_dh(dhpk(otSK_euicc_ecka), dhpk(otSK_dp_ecka)) = dh(otSK_dp_ecka, dhpk(otSK_euicc_ecka))",
+        "oracle_blocked_by": null,
+        "interpretation": "HNDL-vulnerable: attacker computes ShS from two public ECDH keys via break_dh, then derives KE/KM, decrypts BPP"
+      },
+      "attack_traces": {
+        "Q5": "Attacker observes otPK.EUICC.ECKA in euiccSigned2 and otPK.DP.ECKA in bind_body, applies break_dh to recover ShS = DH(otSK, otPK)",
+        "Q6": "With ShS recovered via break_dh, attacker derives KE = kdf_enc(ShS), decrypts BPP = sdec(bpp, KE) to obtain secretProfile"
+      },
+      "raw_output_sha256": "30707064339b6c816dfc5d7dede39a07efd30eba25d3e6aca739d6902a4f8855"
+    },
+    "classical": {
+      "description": "Dolev-Yao attacker, no quantum capability",
+      "queries": {
+        "Q1_server_auth_agreement": true,
+        "Q2_server_auth_injective": true,
+        "Q3_client_auth_agreement": true,
+        "Q4_client_auth_injective": true,
+        "Q5_session_key_secrecy": true,
+        "Q6_bpp_confidentiality": true,
+        "Q7_binding_integrity": true
+      },
+      "raw_output_sha256": "667d570b"
+    },
+    "pfs": {
+      "description": "Phase-separated PFS test: single session, signing keys revealed in phase 1, no break_dh",
+      "queries": {
+        "Q1_server_auth_agreement": true,
+        "Q2_server_auth_injective": true,
+        "Q3_client_auth_agreement": true,
+        "Q4_client_auth_injective": true,
+        "Q5_session_key_secrecy": true,
+        "Q6_bpp_confidentiality": true,
+        "Q7_binding_integrity": true
+      },
+      "raw_output_sha256": "85f6d099"
+    }
+  },
+  "timestamp": "2026-04-19T01:50:00Z"
+}
