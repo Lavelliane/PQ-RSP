@@ -1,0 +1,7 @@
+RESULT event(eUICC_authenticated_server(t,m)) ==> event(SMDP_sent_serverSigned1(t,m)) is false.
+RESULT inj-event(eUICC_authenticated_server(t,m)) ==> inj-event(SMDP_sent_serverSigned1(t,m)) is false.
+RESULT (even event(eUICC_authenticated_server(t,m)) ==> event(SMDP_sent_serverSigned1(t,m)) is false.)
+RESULT event(SMDP_authenticated_client(t,m)) ==> event(eUICC_sent_euiccSigned1(t,m)) is false.
+RESULT inj-event(SMDP_authenticated_client(t,m)) ==> inj-event(eUICC_sent_euiccSigned1(t,m)) is false.
+RESULT (even event(SMDP_authenticated_client(t,m)) ==> event(eUICC_sent_euiccSigned1(t,m)) is false.)
+RESULT event(eUICC_installed_profile(t,bb)) ==> event(SMDP_bound_profile(t,bb)) is false.

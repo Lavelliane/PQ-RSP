@@ -1,0 +1,8 @@
+RESULT event(eUICC_authenticated_server(t,m)) ==> event(SMDP_sent_serverSigned1(t,m)) is true.
+RESULT inj-event(eUICC_authenticated_server(t,m)) ==> inj-event(SMDP_sent_serverSigned1(t,m)) is true.
+RESULT event(SMDP_authenticated_client(t,m)) ==> event(eUICC_sent_euiccSigned1(t,m)) is true.
+RESULT inj-event(SMDP_authenticated_client(t,m)) ==> inj-event(eUICC_sent_euiccSigned1(t,m)) is true.
+RESULT not (event(eUICC_derived_session_key(t,k)) && attacker_p1(k)) is true.
+RESULT not attacker_p1(secretProfile[]) is true.
+RESULT event(eUICC_installed_profile(t,bb)) ==> event(SMDP_bound_profile(t,bb)) is true.
+RESULT not (event(eUICC_computed_ecdh_component(t,ss)) && attacker_p1(ss)) is true.

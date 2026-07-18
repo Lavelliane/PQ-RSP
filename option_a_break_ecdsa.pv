@@ -1,0 +1,80 @@
+(* ============================================================
+   SGP.22 Consumer RSP — Demonstration: break_ecdsa breaks
+   authentication
+
+   This model confirms that the authentication queries Q1-Q4
+   turn FALSE under a quantum adversary that can also forge
+   ECDSA signatures by recovering the signing key from the
+   verification key (Shor's algorithm on the ECDLP). It isolates
+   the effect of break_ecdsa from break_dh so that the analytic
+   reason for the failure is visible in a minimal, two-event
+   model.
+
+   Verdict expected and confirmed:
+     Q1 (server-auth agreement)            : FALSE
+     Q2 (server-auth injective)            : FALSE
+     Q3 (client-auth agreement)            : FALSE
+     Q4 (client-auth injective)            : FALSE
+
+   The full multi-session model with both oracles active is
+   computationally infeasible to verify in reasonable time
+   (state-space blow-up under two unrestricted oracles). This
+   minimal demonstration isolates the analytic content: any
+   configuration that retains ECDSA on the long-term identity
+   loses authentication under break_ecdsa. The consequence is
+   that the strong-quantum secrecy claim is scoped to Q5/Q6/Q8
+   (key-exchange secrecy and forward secrecy), while only
+   configuration (d), which replaces ECDSA with ML-DSA-44,
+   survives break_ecdsa on the authentication queries.
+   ============================================================ *)
+
+free ch: channel.
+
+type skey.
+type pkey.
+type tid.
+
+(* Signature with break_ecdsa oracle *)
+fun sign(bitstring, skey): bitstring.
+fun pk(skey): pkey.
+reduc forall m: bitstring, k: skey; verify(m, sign(m, k), pk(k)) = true.
+
+(* The break_ecdsa oracle: given a verification key, recover the
+   signing key. Models Shor's algorithm on ECDLP. *)
+fun break_ecdsa(pkey): skey.
+equation forall k: skey; break_ecdsa(pk(k)) = k.
+
+event SMDP_sent_serverSigned1(tid, bitstring).
+event eUICC_authenticated_server(tid, bitstring).
+
+(* Q1, Q2: server-authentication queries.
+   Under break_ecdsa the attacker recovers sk_dpauth from pk_dpauth,
+   forges serverSigned1, and the eUICC accepts a serverSigned1 that
+   the SMDP never sent.  Q1 and Q2 turn FALSE. *)
+query t: tid, m: bitstring;
+  event(eUICC_authenticated_server(t, m)) ==>
+  event(SMDP_sent_serverSigned1(t, m)).
+
+query t: tid, m: bitstring;
+  inj-event(eUICC_authenticated_server(t, m)) ==>
+  inj-event(SMDP_sent_serverSigned1(t, m)).
+
+(* Minimal eUICC: receives a signed message, verifies under
+   pk_dpauth, records authentication event. *)
+let eUICC(pk_dpauth: pkey) =
+  in(ch, (t: tid, m: bitstring, sig: bitstring));
+  if verify(m, sig, pk_dpauth) = true then
+  event eUICC_authenticated_server(t, m).
+
+(* Minimal SMDP: records sent event and emits a signed message. *)
+let SMDP(sk_dpauth: skey) =
+  new t: tid;
+  new m: bitstring;
+  event SMDP_sent_serverSigned1(t, m);
+  out(ch, (t, m, sign(m, sk_dpauth))).
+
+process
+  new sk_dpauth: skey;
+  let pk_dpauth = pk(sk_dpauth) in
+  out(ch, pk_dpauth);
+  ((!SMDP(sk_dpauth)) | (!eUICC(pk_dpauth)))

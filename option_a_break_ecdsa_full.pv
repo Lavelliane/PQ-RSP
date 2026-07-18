@@ -1,0 +1,257 @@
+(* ============================================================
+   SGP.22 Consumer RSP — Option (a) under break_ecdsa,
+   scoped single-session re-run on the SGP.22 protocol ladder
+   with the certificate hierarchy elided per Assumption A1.
+
+   Purpose. The combined break_dh + break_ecdsa run on the
+   !-replicated SGP.22 process exhausts 14 GB of RAM without
+   converging, and the companion model option_a_break_ecdsa.pv
+   reduces the protocol to two events only. This file mechanically
+   verifies Q1, Q2, Q3, Q4, and Q7 under break_ecdsa on the
+   complete SGP.22 Phase 1 + Phase 2 message ladder (challenges,
+   signed authentication tuples, ephemeral ECDH key exchange,
+   encrypted Bound Profile Package, MAC-tagged bind_body, and the
+   installation result).
+
+   Scope decisions (and their justifications):
+
+   (a) Single-session scoping (no ! replication on the principal
+       processes). The same scoping discipline is used in the
+       option_*_pfs.pv family for forward-secrecy verification
+       under a phase-bounded oracle. Multi-session
+       HNDL/break_ecdsa semantics are left as open work.
+
+   (b) Certificate hierarchy elided. The CI/EUM certificate
+       machinery (cert_verify, cert_extract_pk, cert_extract_id,
+       cert_pb_verify, cert_pb_extract_pk) is replaced by direct
+       verification-key publication on the public channel.
+       Assumption A1 places the Certificate Issuer (CI) as the
+       trusted root whose compromise is out of scope, so under
+       break_ecdsa the only end-entity keys the attacker can reach
+       are pk_dpauth, pk_dppb, and pk_euicc; in the cert-based
+       encoding these are reached via cert_extract_pk on the
+       observed certificates, and the cert_verify guards are
+       bypassed because they verify against the trusted (and
+       untouched) pk_ci. The reduced encoding is therefore
+       functionally equivalent for the break_ecdsa adversary on
+       end-entity keys, and the four cert-reduction rules that
+       cause Horn-clause state-space explosion under break_ecdsa
+       are eliminated. The LPA passive relay is similarly elided
+       because both channels are public; the LPA is functionally
+       an identity function on attacker-visible bytes.
+
+   (c) Queries scoped to Q1, Q2, Q3, Q4, Q7 (authentication and
+       binding integrity), the relevant queries for the
+       break_ecdsa adversary. Q5/Q6/Q8 are the break_dh queries
+       and are verified in the option_*.pv and option_*_pfs.pv
+       families.
+
+   Verdict expected (and confirmed in the run log):
+     Q1 (server-auth agreement)            : FALSE
+     Q2 (server-auth injective)            : FALSE
+     Q3 (client-auth agreement)            : FALSE
+     Q4 (client-auth injective)            : FALSE
+     Q7 (binding integrity)                : FALSE
+   ============================================================ *)
+
+(* --- Channel --- *)
+free ch: channel.
+
+(* --- Types --- *)
+type skey.
+type pkey.
+type dhskey.
+type dhpkey.
+type nonce.
+type tid.
+type profile.
+type iccid.
+
+(* --- Constants --- *)
+fun SUCCESS(): bitstring [data].
+fun tid_to_bs(tid): bitstring [data, typeConverter].
+fun prof_to_bs(profile): bitstring [data, typeConverter].
+fun iccid_to_bs(iccid): bitstring [data, typeConverter].
+
+free secretProfile: profile [private].
+
+(* --- Signature --- *)
+fun sign(bitstring, skey): bitstring.
+fun pk(skey): pkey.
+reduc forall m: bitstring, k: skey; verify(m, sign(m, k), pk(k)) = true.
+
+(* --- ECDH --- *)
+fun dhpk(dhskey): dhpkey.
+fun dh(dhskey, dhpkey): bitstring.
+equation forall a: dhskey, b: dhskey;
+  dh(a, dhpk(b)) = dh(b, dhpk(a)).
+
+(* --- break_ecdsa oracle (Shor on ECDLP). break_dh deliberately
+   omitted: scope is break_ecdsa alone. --- *)
+fun break_ecdsa(pkey): skey.
+equation forall k: skey; break_ecdsa(pk(k)) = k.
+
+(* --- AEAD --- *)
+fun senc(bitstring, bitstring): bitstring.
+reduc forall m: bitstring, k: bitstring; sdec(senc(m, k), k) = m.
+
+fun mac(bitstring, bitstring): bitstring.
+
+fun kdf_enc(bitstring): bitstring.
+fun kdf_mac(bitstring): bitstring.
+
+(* --- Events --- *)
+event eUICC_authenticated_server(tid, bitstring).
+event SMDP_sent_serverSigned1(tid, bitstring).
+event SMDP_authenticated_client(tid, bitstring).
+event eUICC_sent_euiccSigned1(tid, bitstring).
+event eUICC_installed_profile(tid, bitstring).
+event SMDP_bound_profile(tid, bitstring).
+
+(* ==============================================================
+   QUERIES (scoped Q1, Q2, Q3, Q4, Q7)
+   ============================================================== *)
+
+(* Q1: server-auth agreement — expected FALSE. *)
+query t: tid, m: bitstring;
+  event(eUICC_authenticated_server(t, m)) ==>
+  event(SMDP_sent_serverSigned1(t, m)).
+
+(* Q2: server-auth injective — expected FALSE. *)
+query t: tid, m: bitstring;
+  inj-event(eUICC_authenticated_server(t, m)) ==>
+  inj-event(SMDP_sent_serverSigned1(t, m)).
+
+(* Q3: client-auth agreement — expected FALSE. *)
+query t: tid, m: bitstring;
+  event(SMDP_authenticated_client(t, m)) ==>
+  event(eUICC_sent_euiccSigned1(t, m)).
+
+(* Q4: client-auth injective — expected FALSE. *)
+query t: tid, m: bitstring;
+  inj-event(SMDP_authenticated_client(t, m)) ==>
+  inj-event(eUICC_sent_euiccSigned1(t, m)).
+
+(* Q7: binding integrity — expected FALSE. *)
+query t: tid, bb: bitstring;
+  event(eUICC_installed_profile(t, bb)) ==>
+  event(SMDP_bound_profile(t, bb)).
+
+(* ==============================================================
+   SM-DP+ PROCESS
+   ============================================================== *)
+
+let SMDP(sk_dpauth: skey, sk_dppb: skey, pk_euicc: pkey) =
+  (* Phase 1: receive eUICC challenge (Step 7) *)
+  in(ch, (euiccChallenge: nonce, smdpAddr: bitstring));
+
+  (* Construct serverSigned1 (Step 8) *)
+  new transID: tid;
+  new serverChallenge: nonce;
+  let serverSigned1 = (transID, euiccChallenge, serverChallenge, smdpAddr) in
+  let serverSig1 = sign(serverSigned1, sk_dpauth) in
+  event SMDP_sent_serverSigned1(transID, serverSigned1);
+  out(ch, (transID, serverSigned1, serverSig1));
+
+  (* Receive euiccSigned1 (Step 15) *)
+  in(ch, (euiccSigned1: bitstring, euiccSig1: bitstring));
+  let (=transID, =serverChallenge, euiccInfo2: bitstring) = euiccSigned1 in
+  if verify(euiccSigned1, euiccSig1, pk_euicc) = true then
+  event SMDP_authenticated_client(transID, euiccSigned1);
+
+  (* Phase 2: PrepareDownload (Step 18) *)
+  let smdpSigned2 = tid_to_bs(transID) in
+  let smdpSig2 = sign(smdpSigned2, sk_dppb) in
+  out(ch, (transID, smdpSigned2, smdpSig2));
+
+  (* Receive euiccSigned2 (Step 23) *)
+  in(ch, (euiccSigned2: bitstring, euiccSig2: bitstring));
+  let (=transID, otPK_euicc_ecka: dhpkey) = euiccSigned2 in
+  if verify((euiccSigned2, smdpSig2), euiccSig2, pk_euicc) = true then
+
+  (* Step 24: key exchange and BPP construction *)
+  new otSK_dp_ecka: dhskey;
+  let otPK_dp_ecka = dhpk(otSK_dp_ecka) in
+  let sharedSecret = dh(otSK_dp_ecka, otPK_euicc_ecka) in
+  let ke = kdf_enc(sharedSecret) in
+  let km = kdf_mac(sharedSecret) in
+  let bpp = senc(prof_to_bs(secretProfile), ke) in
+  let bind_body = (transID, otPK_dp_ecka, otPK_euicc_ecka, bpp) in
+  let bind_mac = mac(bind_body, km) in
+  let serverSig3 = sign(bind_body, sk_dppb) in
+  event SMDP_bound_profile(transID, bind_body);
+  out(ch, (transID, bind_body, bind_mac, serverSig3));
+  0.
+
+(* ==============================================================
+   eUICC PROCESS
+   ============================================================== *)
+
+let eUICC(sk_euicc: skey, pk_dpauth: pkey, pk_dppb: pkey) =
+  (* Phase 1: generate euiccChallenge (Step 3), send (Step 4) *)
+  new euiccChallenge: nonce;
+  new smdpAddr: bitstring;
+  out(ch, (euiccChallenge, smdpAddr));
+
+  (* Receive serverSigned1 (Step 11) *)
+  in(ch, (transID: tid, serverSigned1: bitstring, serverSig1: bitstring));
+  if verify(serverSigned1, serverSig1, pk_dpauth) = true then
+  let (=transID, =euiccChallenge, serverChallenge: nonce, =smdpAddr) = serverSigned1 in
+  event eUICC_authenticated_server(transID, serverSigned1);
+
+  (* Send euiccSigned1 (Step 14) *)
+  new euiccInfo2: bitstring;
+  let euiccSigned1 = (transID, serverChallenge, euiccInfo2) in
+  let euiccSig1 = sign(euiccSigned1, sk_euicc) in
+  event eUICC_sent_euiccSigned1(transID, euiccSigned1);
+  out(ch, (euiccSigned1, euiccSig1));
+
+  (* Receive PrepareDownload (Step 19) *)
+  in(ch, (=transID, smdpSigned2: bitstring, smdpSig2: bitstring));
+  if verify(smdpSigned2, smdpSig2, pk_dppb) = true then
+  if smdpSigned2 = tid_to_bs(transID) then
+
+  (* Step 21/22: ephemeral ECDH keypair, send euiccSigned2 *)
+  new otSK_euicc_ecka: dhskey;
+  let otPK_euicc_ecka = dhpk(otSK_euicc_ecka) in
+  let euiccSigned2 = (transID, otPK_euicc_ecka) in
+  let euiccSig2 = sign((euiccSigned2, smdpSig2), sk_euicc) in
+  out(ch, (euiccSigned2, euiccSig2));
+
+  (* Receive BoundProfilePackage (Step 26) *)
+  in(ch, (=transID, bind_body: bitstring, bind_mac: bitstring, serverSig3: bitstring));
+  if verify(bind_body, serverSig3, pk_dppb) = true then
+  let (=transID, otPK_dp_ecka: dhpkey, =otPK_euicc_ecka, bpp: bitstring) = bind_body in
+
+  (* Step 27: ECDH recovery, key derivation, MAC verify, decrypt *)
+  let sharedSecret = dh(otSK_euicc_ecka, otPK_dp_ecka) in
+  let ke = kdf_enc(sharedSecret) in
+  let km = kdf_mac(sharedSecret) in
+  if mac(bind_body, km) = bind_mac then
+  let theProfile = sdec(bpp, ke) in
+  event eUICC_installed_profile(transID, bind_body);
+  0.
+
+(* ==============================================================
+   MAIN PROCESS — single session; verification keys published
+   directly on the channel (replacing the elided cert hierarchy
+   per file-header note (b)).
+   ============================================================== *)
+
+process
+  new sk_dpauth: skey;
+  let pk_dpauth = pk(sk_dpauth) in
+  out(ch, pk_dpauth);
+
+  new sk_dppb: skey;
+  let pk_dppb = pk(sk_dppb) in
+  out(ch, pk_dppb);
+
+  new sk_euicc: skey;
+  let pk_euicc = pk(sk_euicc) in
+  out(ch, pk_euicc);
+
+  (
+    SMDP(sk_dpauth, sk_dppb, pk_euicc) |
+    eUICC(sk_euicc, pk_dpauth, pk_dppb)
+  )
