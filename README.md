@@ -92,9 +92,22 @@ and `combine_kdf` is a pseudorandom function. See the paper for the full
 assumption table and the computational-security discussion.
 
 ## Citation
-
-If you use these models, please cite the paper above. (Manuscript under review;
-citation metadata will be updated on publication.)
+```
+@Article{s26154683,
+AUTHOR = {Lastre, Jhury Kevin and Ko, Yongho and Kwon, Hoseok and You, Ilsun},
+TITLE = {Closing the HNDL Window in Consumer eSIM Provisioning: Hybrid Post-Quantum Migration, Formal Verification, and Deployment Constraints on eUICC Silicon},
+JOURNAL = {Sensors},
+VOLUME = {26},
+YEAR = {2026},
+NUMBER = {15},
+ARTICLE-NUMBER = {4683},
+URL = {https://www.mdpi.com/1424-8220/26/15/4683},
+ISSN = {1424-8220},
+ABSTRACT = {Embedded Subscriber Identity Modules (eSIMs) enable consumer devices to install mobile subscriptions remotely under the GSMA SGP.22 standard for Remote SIM Provisioning (RSP). Because RSP sessions rely on classical elliptic-curve cryptography and eSIM profiles can remain active for 5 to 20 years, recorded provisioning traffic faces a concrete Harvest-Now–Decrypt-Later (HNDL) threat. Upgrading the network transport to post-quantum Transport Layer Security (TLS) is often assumed to be sufficient. However, SGP.22 exchanges the keys that protect the profile across the local host-to-chip interface, beneath the transport layer. This paper presents a systematic post-quantum cryptography (PQC) migration framework for consumer RSP. We model four configurations of the SGP.22 on-card key-agreement step and determine, under a quantum key-recovery adversary, which configurations resist HNDL and what resources they require. We combine symbolic verification in ProVerif with a device-grounded evaluation that pairs provisioning and memory observations from a sysmocom C2T research embedded Universal Integrated Circuit Card (eUICC) with strict-instruction-set PQC measurements on an STM32 Nucleo-F446RE development board with an ARM Cortex-M4F core. Among the configurations studied, hybrid classical and post-quantum key exchange is the minimum configuration that resists HNDL, whereas a fully post-quantum configuration also protects authentication against signature forgery. Under the tested platform and resource assumptions, volatile Random Access Memory (RAM), rather than computation, is the binding deployment constraint. We therefore propose a capability-negotiation mechanism that would match a migration configuration to the memory advertised by each card.},
+DOI = {10.3390/s26154683}
+}
+```
+If you use these models, please cite the paper above. 
 
 ## License
 
